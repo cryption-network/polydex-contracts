@@ -3,6 +3,15 @@ Contract are deployed on Matic Mumbai Testnet(80001)
 
 Feel free to read the code. More details coming soon.
 
+## Install dependencies
+```
+npm i 
+```
+## compile
+```
+npx hardhat compile
+```
+
 ## Deployed Contracts / Hash
 
 - CryptionNetworkToken(CNT) - https://explorer-mumbai.maticvigil.com/address/0x9822C1FBe8e9669a36CA2621430eC717336630a7
