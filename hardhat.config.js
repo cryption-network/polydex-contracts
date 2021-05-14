@@ -31,6 +31,10 @@ module.exports = {
       url: INFURA_API,
       accounts: [`0x${PRIVATE_KEY}`],
     },
+    matic: {
+      url: INFURA_API,
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     hardhat: {
       forking: {
         url: INFURA_API,
