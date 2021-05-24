@@ -3,6 +3,8 @@ pragma solidity 0.6.12;
 import './CryptionNetworkToken.sol';
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import './libraries/NativeMetaTransaction.sol';
+import './libraries/ContextMixin.sol';
 
 // import "@nomiclabs/buidler/console.sol";
 interface IMigratorChef {
@@ -16,7 +18,7 @@ interface IMigratorChef {
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable {
+contract MasterChef is Ownable ,  ContextMixin ,NativeMetaTransaction{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -80,10 +82,20 @@ contract MasterChef is Ownable {
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
+        _initializeEIP712("MasterChef");
         cnt = _cnt;
         cntPerBlock = _cntPerBlock;
         startBlock = _startBlock;
         bonusEndBlock = _bonusEndBlock;
+    }
+    
+    function _msgSender()
+        internal
+        view
+        override
+        returns (address payable sender)
+    {
+        return ContextMixin.msgSender();
     }
 
     function updateBonusMultiplier(uint256 multiplierNumber) public onlyOwner {
@@ -196,47 +208,47 @@ contract MasterChef is Ownable {
     // Deposit LP tokens to MasterChef for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
+        UserInfo storage user = userInfo[_pid][_msgSender()];
         updatePool(_pid);
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-                safeCNTTransfer(msg.sender, pending);
+                safeCNTTransfer(_msgSender(), pending);
             }
         }
         if (_amount > 0) {
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            pool.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Deposit(msg.sender, _pid, _amount);
+        emit Deposit(_msgSender(), _pid, _amount);
     }
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
 
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
+        UserInfo storage user = userInfo[_pid][_msgSender()];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            safeCNTTransfer(msg.sender, pending);
+            safeCNTTransfer(_msgSender(), pending);
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.lpToken.safeTransfer(address(_msgSender()), _amount);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Withdraw(msg.sender, _pid, _amount);
+        emit Withdraw(_msgSender(), _pid, _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
-        emit EmergencyWithdraw(msg.sender, _pid, user.amount);
+        UserInfo storage user = userInfo[_pid][_msgSender()];
+        pool.lpToken.safeTransfer(address(_msgSender()), user.amount);
+        emit EmergencyWithdraw(_msgSender(), _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
     }
@@ -250,4 +262,6 @@ contract MasterChef is Ownable {
             cnt.transfer(_to, _amount);
         }
     }
+    
+
 }
