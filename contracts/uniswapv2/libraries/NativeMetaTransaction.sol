@@ -3,6 +3,7 @@ pragma solidity >= 0.6.6;
 import './EIP712Base.sol';
 import './SafeMath.sol';
 
+
 contract NativeMetaTransaction is EIP712Base {
     using SafeMathUniswap for uint;
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
