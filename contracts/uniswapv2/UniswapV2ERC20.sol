@@ -7,8 +7,8 @@ import './libraries/SafeMath.sol';
 contract UniswapV2ERC20 {
     using SafeMathUniswap for uint;
 
-    string public constant name = 'Polydex LP Token';
-    string public constant symbol = 'Polydex-LP';
+    string public constant name = 'PolyDEX LP Token';
+    string public constant symbol = 'PolyDEX-LP';
     uint8 public constant decimals = 18;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
