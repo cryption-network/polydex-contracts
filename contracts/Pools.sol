@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./library/TransferHelper.sol";
+import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import './libraries/NativeMetaTransaction.sol';
 import './libraries/ContextMixin.sol';
