@@ -16,6 +16,7 @@ contract CoffeeTable is ERC20("CoffeeTable", "xCNT") , ContextMixin , NativeMeta
 
     // Define the CNT token contract
     constructor(IERC20 _cnt) public {
+        _initializeEIP712("CoffeeTable");
         cnt = _cnt;
     }
 
@@ -38,15 +39,15 @@ contract CoffeeTable is ERC20("CoffeeTable", "xCNT") , ContextMixin , NativeMeta
         uint256 totalShares = totalSupply();
         // If no xCNT exists, mint it 1:1 to the amount put in
         if (totalShares == 0 || totalCNT == 0) {
-            _mint(_msgSender, _amount);
+            _mint(_msgSender(), _amount);
         } 
         // Calculate and mint the amount of xCNT the CNT is worth. The ratio will change overtime, as xCNT is burned/minted and CNT deposited + gained from fees / withdrawn.
         else {
             uint256 what = _amount.mul(totalShares).div(totalCNT);
-            _mint(_msgSender, what);
+            _mint(_msgSender(), what);
         }
         // Lock the CNT in the contract
-        cnt.transferFrom(_msgSender, address(this), _amount);
+        cnt.transferFrom(_msgSender(), address(this), _amount);
     }
 
     // Leave the bar. Claim back your CNTs.
@@ -56,7 +57,7 @@ contract CoffeeTable is ERC20("CoffeeTable", "xCNT") , ContextMixin , NativeMeta
         uint256 totalShares = totalSupply();
         // Calculates the amount of CNT the xCNT is worth
         uint256 what = _share.mul(cnt.balanceOf(address(this))).div(totalShares);
-        _burn(_msgSender, _share);
-        cnt.transfer(_msgSender, what);
+        _burn(_msgSender(), _share);
+        cnt.transfer(_msgSender(), what);
     }
 }

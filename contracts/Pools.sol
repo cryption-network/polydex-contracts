@@ -52,6 +52,7 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor( address _farmGenerator) public {
+         _initializeEIP712("Farm01");
         farmGenerator = _farmGenerator;
     }
     
