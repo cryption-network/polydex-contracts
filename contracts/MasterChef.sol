@@ -261,15 +261,7 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
         payOrLockupPendingcnt(_pid);
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
-            
-            if (pool.depositFeeBP > 0) {
-                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
-                user.amount = user.amount.add(_amount).sub(depositFee);
-                pool.lpToken.safeTransfer(feeAddress, depositFee);
-            } else {
-                user.amount = user.amount.add(_amount);
-            }
-            
+            user.amount = user.amount.add(_amount);
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
@@ -286,7 +278,13 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
 
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(_msgSender()), _amount);
+            if (pool.depositFeeBP > 0) {
+                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
+                pool.lpToken.safeTransfer(feeAddress, depositFee);
+                pool.lpToken.safeTransfer(address(_msgSender()), _amount.sub(depositFee));
+            } else {
+                pool.lpToken.safeTransfer(address(_msgSender()), _amount);
+            }
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
         emit Withdraw(_msgSender(), _pid, _amount);
