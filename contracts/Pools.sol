@@ -19,6 +19,8 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     struct UserInfo {
         uint256 amount;     // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt.
+        uint256 rewardLockedUp;  // Reward locked up.
+        uint256 nextHarvestUntil; // When can the user harvest again.
     }
     
     /// @notice all the settings for this farm in one struct
@@ -34,11 +36,22 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12
         uint256 farmableSupply; // set in init, total amount of tokens farmable
         uint256 numFarmers;
+        uint16 withdrawlFeeBP; // Deposit fee in basis points
+        uint256 harvestInterval;  // Harvest interval in seconds
     }
     
     /// @notice farm type id. Useful for back-end systems to know how to read the contract (ABI) 
     /// as we plan to launch multiple farm types
     uint256 public farmType = 1;
+
+    // Deposit Fee address
+    address public feeAddress;
+    // Max harvest interval: 14 days.
+    uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
+    // Max deposit fee: 10%.
+    uint16 public constant MAXIMUM_WITHDRAWL_FEE_BP = 1000;
+    // Total locked up rewards
+    uint256 public totalLockedUpRewards;
    
     address public farmGenerator;
 
@@ -50,10 +63,12 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
+    event RewardLockedUp(address indexed user, uint256 amountLockedUp);
 
-    constructor( address _farmGenerator) public {
-         _initializeEIP712("Farm01");
+    constructor( address _farmGenerator , address _feeAddress) public {
+        _initializeEIP712("Farm01");
         farmGenerator = _farmGenerator;
+        feeAddress = _feeAddress;
     }
     
     function _msgSender()
@@ -75,10 +90,13 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         uint256 _blockReward, 
         uint256 _startBlock, 
         uint256 _endBlock, 
-        uint256 _bonusEndBlock, 
+        uint256 _bonusEndBlock,
+        uint16 _withdrawlFeeBP,
+        uint256 _harvestInterval, 
         uint256 _bonus
         ) external onlyOwner {
-        require(_msgSender() == address(farmGenerator), 'FORBIDDEN');
+        require(_withdrawlFeeBP <= MAXIMUM_WITHDRAWL_FEE_BP, "add: invalid deposit fee basis points");
+        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
 
         TransferHelper.safeTransferFrom(address(_rewardToken), _msgSender(), address(this), _amount);
         farmInfo.rewardToken = _rewardToken;
@@ -95,6 +113,8 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         
         farmInfo.endBlock = _endBlock;
         farmInfo.farmableSupply = _amount;
+        farmInfo.withdrawlFeeBP = _withdrawlFeeBP;
+        farmInfo.harvestInterval = _harvestInterval;
     }
 
     /**
@@ -103,6 +123,7 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
      * @param _to the end of the period to measure rewards for
      * @return The weighted multiplier for the given period
      */
+     
     function getMultiplier(uint256 _from_block, uint256 _to) public view returns (uint256) {
         uint256 _from = _from_block >= farmInfo.startBlock ? _from_block : farmInfo.startBlock;
         uint256 to = farmInfo.endBlock > _to ? _to : farmInfo.endBlock;
@@ -131,7 +152,21 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
             uint256 tokenReward = multiplier.mul(farmInfo.blockReward);
             accRewardPerShare = accRewardPerShare.add(tokenReward.mul(1e12).div(lpSupply));
         }
-        return user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+
+        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        return pending.add(user.rewardLockedUp);
+    }
+    
+    // View function to see if user can harvest cnt's.
+    function canHarvest(address _user) public view returns (bool) {
+        UserInfo storage user = userInfo[_user];
+        return block.timestamp >= user.nextHarvestUntil;
+    }
+
+    // View function to see if user harvest until time.
+    function getHarvestUntil(address _user) public view returns (uint256) {
+        UserInfo storage user = userInfo[_user];
+        return user.nextHarvestUntil;
     }
 
     /**
@@ -159,13 +194,12 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[_msgSender()];
         updatePool();
-        if (user.amount > 0) {
-            uint256 pending = user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(user.rewardDebt);
-            _safeRewardTransfer(_msgSender(), pending);
-        }
+        payOrLockupPendingReward();
+
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
+
         farmInfo.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
@@ -180,14 +214,22 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         UserInfo storage user = userInfo[_msgSender()];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
+        payOrLockupPendingReward();
+        
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
-        uint256 pending = user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(user.rewardDebt);
-        _safeRewardTransfer(_msgSender(), pending);
+
         user.amount = user.amount.sub(_amount);
+        
+        if(farmInfo.withdrawlFeeBP > 0){
+           uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
+           farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
+           farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount.sub(withdrawlFee));
+        }else{
+           farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
+        }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
-        farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
         emit Withdraw(_msgSender(), _amount);
     }
 
@@ -203,6 +245,40 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         }
         user.amount = 0;
         user.rewardDebt = 0;
+    }
+
+    function payOrLockupPendingReward() internal {
+        UserInfo storage user = userInfo[_msgSender()];
+
+        if (user.nextHarvestUntil == 0) {
+            user.nextHarvestUntil = block.timestamp.add(farmInfo.harvestInterval);
+        }
+
+        uint256 pending = user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        if (canHarvest(_msgSender())) {
+            if (pending > 0 || user.rewardLockedUp > 0) {
+                uint256 totalRewards = pending.add(user.rewardLockedUp);
+
+                // reset lockup
+                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                user.rewardLockedUp = 0;
+                user.nextHarvestUntil = block.timestamp.add(farmInfo.harvestInterval);
+
+                // send rewards
+                _safeRewardTransfer(_msgSender(), totalRewards);
+            }
+        } else if (pending > 0) {
+            user.rewardLockedUp = user.rewardLockedUp.add(pending);
+            totalLockedUpRewards = totalLockedUpRewards.add(pending);
+            emit RewardLockedUp(_msgSender(), pending);
+        }
+    }
+
+    // Update fee address by the previous fee address.
+    function setFeeAddress(address _feeAddress) public {
+        require(_feeAddress != address(0), "setFeeAddress: invalid address");
+        require(_msgSender() == feeAddress, "setFeeAddress: FORBIDDEN");
+        feeAddress = _feeAddress;
     }
 
     /**
