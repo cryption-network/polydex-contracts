@@ -26,6 +26,8 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
     struct UserInfo {
         uint256 amount;     // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
+        uint256 rewardLockedUp;  // Reward locked up.
+        uint256 nextHarvestUntil; // When can the user harvest again.
         //
         // We do some fancy math here. Basically, any point in time, the amount of CNTs
         // entitled to a user but is pending to be distributed is:
@@ -45,6 +47,8 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
         uint256 allocPoint;       // How many allocation points assigned to this pool. CNTs to distribute per block.
         uint256 lastRewardBlock;  // Last block number that CNTs distribution occurs.
         uint256 accCNTPerShare; // Accumulated CNTs per share, times 1e12. See below.
+        uint16 depositFeeBP; // Deposit fee in basis points
+        uint256 harvestInterval;  // Harvest interval in seconds
     }
 
     // The CNT TOKEN!
@@ -53,6 +57,14 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
     uint256 public bonusEndBlock;
     // CNT tokens created per block.
     uint256 public cntPerBlock;
+    // Deposit Fee address
+    address public feeAddress;
+    // Max harvest interval: 14 days.
+    uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
+    // Max deposit fee: 10%.
+    uint16 public constant MAXIMUM_DEPOSIT_FEE_BP = 1000;
+    // Total locked up rewards
+    uint256 public totalLockedUpRewards;
     // Bonus muliplier for early cnt makers.
     uint256 public BONUS_MULTIPLIER = 1;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
@@ -67,24 +79,28 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
     // The block number when CNT mining starts.
     uint256 public startBlock;
     
-    event PoolAddition(uint256 indexed pid, uint256 allocPoint, IERC20 indexed lpToken);
-    event UpdatedPoolAlloc(uint256 indexed pid, uint256 allocPoint);
-    event PoolUpdated(uint256 indexed pid, uint256 lastRewardBlock, uint256 lpSupply, uint256 accSushiPerShare);
+    event PoolAddition(uint256 indexed pid, uint256 allocPoint, IERC20 indexed lpToken,uint16 depositFeeBP,uint256 harvestInterval);
+    event UpdatedPoolAlloc(uint256 indexed pid, uint256 allocPoint,uint16 depositFeeBP,uint256 harvestInterval);
+    event PoolUpdated(uint256 indexed pid, uint256 lastRewardBlock, uint256 lpSupply, uint256 accCNTPerShare);
     event PoolMigrated(uint256 indexed pid);
     event MigratorUpdated(IMigratorChef indexed newMigrator);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-
+    event SetFeeAddress(address indexed user, address indexed _devAddress);
+    event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
+    
     constructor(
         CryptionNetworkToken _cnt,
         uint256 _cntPerBlock,
+        address _feeAddress,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
         _initializeEIP712("MasterChef");
         cnt = _cnt;
         cntPerBlock = _cntPerBlock;
+        feeAddress = _feeAddress;
         startBlock = _startBlock;
         bonusEndBlock = _bonusEndBlock;
     }
@@ -112,7 +128,15 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+    function add(
+        uint256 _allocPoint,
+        IERC20 _lpToken,
+        uint16 _depositFeeBP,
+        uint256 _harvestInterval,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(_depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP, "add: invalid deposit fee basis points");
+        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -122,21 +146,32 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accCNTPerShare: 0
+            accCNTPerShare: 0,
+            depositFeeBP: _depositFeeBP,
+            harvestInterval: _harvestInterval
         }));
         
-        emit PoolAddition(poolInfo.length.sub(1), _allocPoint, _lpToken);
+        emit PoolAddition(poolInfo.length.sub(1), _allocPoint, _lpToken , _depositFeeBP , _harvestInterval);
     }
 
     // Update the given pool's CNT allocation point. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
+     function set(
+        uint256 _pid,
+        uint256 _allocPoint,
+        uint16 _depositFeeBP,
+        uint256 _harvestInterval,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(_depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP, "set: invalid deposit fee basis points");
         if (_withUpdate) {
             massUpdatePools();
         }
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
         poolInfo[_pid].allocPoint = _allocPoint;
-        
-        emit UpdatedPoolAlloc(_pid, _allocPoint);
+        poolInfo[_pid].depositFeeBP = _depositFeeBP;
+        poolInfo[_pid].harvestInterval = _harvestInterval;
+
+        emit UpdatedPoolAlloc(_pid, _allocPoint , _depositFeeBP ,_harvestInterval);
     }
     
     // Set the migrator contract. Can only be called by the owner.
@@ -175,7 +210,20 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
             uint256 cntReward = multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
             accCNTPerShare = accCNTPerShare.add(cntReward.mul(1e12).div(lpSupply));
         }
-        return user.amount.mul(accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        return pending.add(user.rewardLockedUp);
+    }
+
+    // View function to see if user can harvest cnt's.
+    function canHarvest(uint256 _pid, address _user) public view returns (bool) {
+        UserInfo storage user = userInfo[_pid][_user];
+        return block.timestamp >= user.nextHarvestUntil;
+    }
+
+    // View function to see if user harvest until time.
+    function getHarvestUntil(uint256 _pid, address _user) public view returns (uint256) {
+        UserInfo storage user = userInfo[_pid][_user];
+        return user.nextHarvestUntil;
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -210,15 +258,19 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_msgSender()];
         updatePool(_pid);
-        if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
-            if(pending > 0) {
-                safeCNTTransfer(_msgSender(), pending);
-            }
-        }
+        payOrLockupPendingcnt(_pid);
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
-            user.amount = user.amount.add(_amount);
+            
+            if (pool.depositFeeBP > 0) {
+                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
+                user.amount = user.amount.add(_amount).sub(depositFee);
+                pool.lpToken.safeTransfer(feeAddress, depositFee);
+            } else {
+                user.amount = user.amount.add(_amount);
+            }
+            
+            user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
         emit Deposit(_msgSender(), _pid, _amount);
@@ -226,15 +278,12 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
-
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_msgSender()];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
-        if(pending > 0) {
-            safeCNTTransfer(_msgSender(), pending);
-        }
+        payOrLockupPendingcnt(_pid);
+
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(_msgSender()), _amount);
@@ -251,8 +300,47 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
         emit EmergencyWithdraw(_msgSender(), _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
+        user.rewardLockedUp = 0;
+        user.nextHarvestUntil = 0;
     }
 
+     // Pay or lockup pending cnt.
+    function payOrLockupPendingcnt(uint256 _pid) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_msgSender()];
+
+        if (user.nextHarvestUntil == 0) {
+            user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+        }
+
+        uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        if (canHarvest(_pid, _msgSender())) {
+            if (pending > 0 || user.rewardLockedUp > 0) {
+                uint256 totalRewards = pending.add(user.rewardLockedUp);
+
+                // reset lockup
+                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                user.rewardLockedUp = 0;
+                user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+
+                // send rewards
+                safeCNTTransfer(_msgSender(), totalRewards);
+            }
+        } else if (pending > 0) {
+            user.rewardLockedUp = user.rewardLockedUp.add(pending);
+            totalLockedUpRewards = totalLockedUpRewards.add(pending);
+            emit RewardLockedUp(_msgSender(), _pid, pending);
+        }
+    }
+
+    // Update fee address by the previous fee address.
+    function setFeeAddress(address _feeAddress) public {
+        require(_feeAddress != address(0), "setFeeAddress: invalid address");
+        require(_msgSender() == feeAddress, "setFeeAddress: FORBIDDEN");
+        feeAddress = _feeAddress;
+        emit SetFeeAddress(_msgSender(), _feeAddress);
+    }
+    
     // Safe cnt transfer function, just in case if rounding error causes pool to not have enough CNTs.
     function safeCNTTransfer(address _to, uint256 _amount) internal {
         uint256 cntBal = cnt.balanceOf(address(this));
