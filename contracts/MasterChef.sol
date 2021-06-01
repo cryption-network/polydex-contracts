@@ -334,7 +334,7 @@ contract MasterChef is Ownable ,  ContextMixin , NativeMetaTransaction{
     }
 
     // Update fee address by the previous fee address.
-    function setFeeAddress(address _feeAddress) public {
+    function setFeeAddress(address _feeAddress) public onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         require(_msgSender() == feeAddress, "setFeeAddress: FORBIDDEN");
         feeAddress = _feeAddress;
