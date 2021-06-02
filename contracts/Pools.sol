@@ -21,7 +21,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 rewardDebt; // Reward debt.
         uint256 rewardLockedUp; // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
-        mapping (address => bool) whiteListOrNot;
+        mapping (address => bool) whiteListedHandlers;
     }
 
     /// @notice all the settings for this farm in one struct
@@ -221,30 +221,24 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      */
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[_msgSender()];
-        user.whiteListOrNot[_msgSender()] = true;
+        user.whiteListedHandlers[_msgSender()] = true;
         updatePool();
         payOrLockupPendingReward(_msgSender());
 
-        if (user.amount == 0 && _amount > 0) {
-            farmInfo.numFarmers++;
-        }
-
-        farmInfo.lpToken.safeTransferFrom(
-            address(_msgSender()),
-            address(this),
-            _amount
-        );
-        user.amount = user.amount.add(_amount);
-        user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
-        emit Deposit(_msgSender(), _amount);
+        depositInternal(_amount,_msgSender());
     }
 
     function depositFor(uint256 _amount,address _user) public {
         UserInfo storage user = userInfo[_user];
-        user.whiteListOrNot[_user] = true;
+        user.whiteListedHandlers[_user] = true;
         updatePool();
-        payOrLockupPendingReward(_msgSender());
+        payOrLockupPendingReward(_user);
 
+        depositInternal(_amount, _user);
+    }
+
+    function depositInternal(uint256 _amount,address _user) internal {
+        UserInfo storage user = userInfo[_user];
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -269,34 +263,21 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         updatePool();
         payOrLockupPendingReward(_msgSender());
 
-        if (user.amount == _amount && _amount > 0) {
-            farmInfo.numFarmers--;
-        }
-
-        user.amount = user.amount.sub(_amount);
-
-        if (farmInfo.withdrawlFeeBP > 0) {
-            uint256 withdrawlFee =
-                _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
-            farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
-            farmInfo.lpToken.safeTransfer(
-                address(_msgSender()),
-                _amount.sub(withdrawlFee)
-            );
-        } else {
-            farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
-        }
-        user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
-        emit Withdraw(_msgSender(), _amount);
+        withdrawInternal(_amount,_msgSender());
     }
 
     function withdrawFor(uint256 _amount,address _user) public {
         UserInfo storage user = userInfo[_user];
-        require(user.whiteListOrNot[_msgSender()]);
+        require(user.whiteListedHandlers[_msgSender()]);
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
         payOrLockupPendingReward(_user);
-        
+
+        withdrawInternal(_amount,_user);
+    }
+
+    function withdrawInternal(uint256 _amount,address _user) public{
+        UserInfo storage user = userInfo[_user];
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -308,16 +289,16 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
             farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
             farmInfo.lpToken.safeTransfer(
-                address(_msgSender()),
+                address(_user),
                 _amount.sub(withdrawlFee)
             );
         } else {
-            farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
+            farmInfo.lpToken.safeTransfer(address(_user), _amount);
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
-        emit Withdraw(_msgSender(), _amount);
+        emit Withdraw(_user, _amount);
     }
-
+     
     /**
      * @notice emergency functoin to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
      */
@@ -334,12 +315,17 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
     function addUserToWhiteList(address _user) external {
         UserInfo storage user = userInfo[_msgSender()];
-        user.whiteListOrNot[_user] = true;
+        user.whiteListedHandlers[_user] = true;
     }
-
+    
+    function removeUserFromWhiteList(address _user) external {
+        UserInfo storage user = userInfo[_msgSender()];
+        user.whiteListedHandlers[_user] = false;
+    }
+    
     function isUserWhiteListed(address _owner , address _user) external returns(bool) {
         UserInfo storage user = userInfo[_owner];
-        return user.whiteListOrNot[_user];
+        return user.whiteListedHandlers[_user];
     }
 
     function payOrLockupPendingReward(address _user) internal {
