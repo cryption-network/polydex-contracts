@@ -8,21 +8,21 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import './libraries/NativeMetaTransaction.sol';
-import './libraries/ContextMixin.sol';
+import "./libraries/NativeMetaTransaction.sol";
+import "./libraries/ContextMixin.sol";
 
-contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
+contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     /// @notice information stuct on each user than stakes LP tokens.
     struct UserInfo {
-        uint256 amount;     // How many LP tokens the user has provided.
+        uint256 amount; // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt.
-        uint256 rewardLockedUp;  // Reward locked up.
+        uint256 rewardLockedUp; // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
     }
-    
+
     /// @notice all the settings for this farm in one struct
     struct FarmInfo {
         IERC20 lpToken;
@@ -32,45 +32,40 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         uint256 bonusEndBlock;
         uint256 bonus;
         uint256 endBlock;
-        uint256 lastRewardBlock;  // Last block number that reward distribution occurs.
+        uint256 lastRewardBlock; // Last block number that reward distribution occurs.
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12
         uint256 farmableSupply; // set in init, total amount of tokens farmable
         uint256 numFarmers;
         uint16 withdrawlFeeBP; // Deposit fee in basis points
-        uint256 harvestInterval;  // Harvest interval in seconds
+        uint256 harvestInterval; // Harvest interval in seconds
     }
-    
-    /// @notice farm type id. Useful for back-end systems to know how to read the contract (ABI) 
-    /// as we plan to launch multiple farm types
-    uint256 public farmType = 1;
 
     // Deposit Fee address
     address public feeAddress;
     // Max harvest interval: 14 days.
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
-    // Max deposit fee: 10%.
+
+    // Max deposit fee: 10%. This number is later divided by 10000 for calculations.
     uint16 public constant MAXIMUM_WITHDRAWL_FEE_BP = 1000;
+
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
-   
-    address public farmGenerator;
 
     FarmInfo public farmInfo;
-    
+
     /// @notice information on each user than stakes LP tokens
-    mapping (address => UserInfo) public userInfo;
+    mapping(address => UserInfo) public userInfo;
 
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
     event RewardLockedUp(address indexed user, uint256 amountLockedUp);
 
-    constructor( address _farmGenerator , address _feeAddress) public {
-        _initializeEIP712("Farm01");
-        farmGenerator = _farmGenerator;
+    constructor(address _feeAddress) public {
+        _initializeEIP712("StakingPool");
         feeAddress = _feeAddress;
     }
-    
+
     function _msgSender()
         internal
         view
@@ -79,38 +74,51 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     {
         return ContextMixin.msgSender();
     }
-    
+
     /**
-     * @notice initialize the farming contract. 
+     * @notice initialize the farming contract.
      * This is called only once upon farm creation and the FarmGenerator ensures the farm has the correct paramaters
      */
-    function init (
-        IERC20 _rewardToken, 
-        uint256 _amount, IERC20 _lpToken, 
-        uint256 _blockReward, 
-        uint256 _startBlock, 
-        uint256 _endBlock, 
+    function init(
+        IERC20 _rewardToken,
+        uint256 _amount,
+        IERC20 _lpToken,
+        uint256 _blockReward,
+        uint256 _startBlock,
+        uint256 _endBlock,
         uint256 _bonusEndBlock,
         uint16 _withdrawlFeeBP,
-        uint256 _harvestInterval, 
+        uint256 _harvestInterval,
         uint256 _bonus
-        ) external onlyOwner {
-        require(_withdrawlFeeBP <= MAXIMUM_WITHDRAWL_FEE_BP, "add: invalid deposit fee basis points");
-        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
+    ) external onlyOwner {
+        require(
+            _withdrawlFeeBP <= MAXIMUM_WITHDRAWL_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
 
-        TransferHelper.safeTransferFrom(address(_rewardToken), _msgSender(), address(this), _amount);
+        TransferHelper.safeTransferFrom(
+            address(_rewardToken),
+            _msgSender(),
+            address(this),
+            _amount
+        );
         farmInfo.rewardToken = _rewardToken;
-        
+
         farmInfo.startBlock = _startBlock;
         farmInfo.blockReward = _blockReward;
         farmInfo.bonusEndBlock = _bonusEndBlock;
         farmInfo.bonus = _bonus;
-        
-        uint256 lastRewardBlock = block.number > _startBlock ? block.number : _startBlock;
+
+        uint256 lastRewardBlock =
+            block.number > _startBlock ? block.number : _startBlock;
         farmInfo.lpToken = _lpToken;
         farmInfo.lastRewardBlock = lastRewardBlock;
         farmInfo.accRewardPerShare = 0;
-        
+
         farmInfo.endBlock = _endBlock;
         farmInfo.farmableSupply = _amount;
         farmInfo.withdrawlFeeBP = _withdrawlFeeBP;
@@ -123,18 +131,26 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
      * @param _to the end of the period to measure rewards for
      * @return The weighted multiplier for the given period
      */
-     
-    function getMultiplier(uint256 _from_block, uint256 _to) public view returns (uint256) {
-        uint256 _from = _from_block >= farmInfo.startBlock ? _from_block : farmInfo.startBlock;
+
+    function getMultiplier(uint256 _from_block, uint256 _to)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 _from =
+            _from_block >= farmInfo.startBlock
+                ? _from_block
+                : farmInfo.startBlock;
         uint256 to = farmInfo.endBlock > _to ? _to : farmInfo.endBlock;
         if (to <= farmInfo.bonusEndBlock) {
             return to.sub(_from).mul(farmInfo.bonus);
         } else if (_from >= farmInfo.bonusEndBlock) {
             return to.sub(_from);
         } else {
-            return farmInfo.bonusEndBlock.sub(_from).mul(farmInfo.bonus).add(
-                to.sub(farmInfo.bonusEndBlock)
-            );
+            return
+                farmInfo.bonusEndBlock.sub(_from).mul(farmInfo.bonus).add(
+                    to.sub(farmInfo.bonusEndBlock)
+                );
         }
     }
 
@@ -148,15 +164,19 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         uint256 accRewardPerShare = farmInfo.accRewardPerShare;
         uint256 lpSupply = farmInfo.lpToken.balanceOf(address(this));
         if (block.number > farmInfo.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(farmInfo.lastRewardBlock, block.number);
+            uint256 multiplier =
+                getMultiplier(farmInfo.lastRewardBlock, block.number);
             uint256 tokenReward = multiplier.mul(farmInfo.blockReward);
-            accRewardPerShare = accRewardPerShare.add(tokenReward.mul(1e12).div(lpSupply));
+            accRewardPerShare = accRewardPerShare.add(
+                tokenReward.mul(1e12).div(lpSupply)
+            );
         }
 
-        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending =
+            user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
         return pending.add(user.rewardLockedUp);
     }
-    
+
     // View function to see if user can harvest cnt's.
     function canHarvest(address _user) public view returns (bool) {
         UserInfo storage user = userInfo[_user];
@@ -178,15 +198,22 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         }
         uint256 lpSupply = farmInfo.lpToken.balanceOf(address(this));
         if (lpSupply == 0) {
-            farmInfo.lastRewardBlock = block.number < farmInfo.endBlock ? block.number : farmInfo.endBlock;
+            farmInfo.lastRewardBlock = block.number < farmInfo.endBlock
+                ? block.number
+                : farmInfo.endBlock;
             return;
         }
-        uint256 multiplier = getMultiplier(farmInfo.lastRewardBlock, block.number);
+        uint256 multiplier =
+            getMultiplier(farmInfo.lastRewardBlock, block.number);
         uint256 tokenReward = multiplier.mul(farmInfo.blockReward);
-        farmInfo.accRewardPerShare = farmInfo.accRewardPerShare.add(tokenReward.mul(1e12).div(lpSupply));
-        farmInfo.lastRewardBlock = block.number < farmInfo.endBlock ? block.number : farmInfo.endBlock;
+        farmInfo.accRewardPerShare = farmInfo.accRewardPerShare.add(
+            tokenReward.mul(1e12).div(lpSupply)
+        );
+        farmInfo.lastRewardBlock = block.number < farmInfo.endBlock
+            ? block.number
+            : farmInfo.endBlock;
     }
-    
+
     /**
      * @notice deposit LP token function for _msgSender()
      * @param _amount the total deposit amount
@@ -200,7 +227,11 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
             farmInfo.numFarmers++;
         }
 
-        farmInfo.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
+        farmInfo.lpToken.safeTransferFrom(
+            address(_msgSender()),
+            address(this),
+            _amount
+        );
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
         emit Deposit(_msgSender(), _amount);
@@ -215,19 +246,23 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
         payOrLockupPendingReward();
-        
+
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
 
         user.amount = user.amount.sub(_amount);
-        
-        if(farmInfo.withdrawlFeeBP > 0){
-           uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
-           farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
-           farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount.sub(withdrawlFee));
-        }else{
-           farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
+
+        if (farmInfo.withdrawlFeeBP > 0) {
+            uint256 withdrawlFee =
+                _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
+            farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
+            farmInfo.lpToken.safeTransfer(
+                address(_msgSender()),
+                _amount.sub(withdrawlFee)
+            );
+        } else {
+            farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
         emit Withdraw(_msgSender(), _amount);
@@ -251,18 +286,27 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
         UserInfo storage user = userInfo[_msgSender()];
 
         if (user.nextHarvestUntil == 0) {
-            user.nextHarvestUntil = block.timestamp.add(farmInfo.harvestInterval);
+            user.nextHarvestUntil = block.timestamp.add(
+                farmInfo.harvestInterval
+            );
         }
 
-        uint256 pending = user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending =
+            user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(
+                user.rewardDebt
+            );
         if (canHarvest(_msgSender())) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
 
                 // reset lockup
-                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                totalLockedUpRewards = totalLockedUpRewards.sub(
+                    user.rewardLockedUp
+                );
                 user.rewardLockedUp = 0;
-                user.nextHarvestUntil = block.timestamp.add(farmInfo.harvestInterval);
+                user.nextHarvestUntil = block.timestamp.add(
+                    farmInfo.harvestInterval
+                );
 
                 // send rewards
                 _safeRewardTransfer(_msgSender(), totalRewards);
@@ -275,9 +319,8 @@ contract Farm01 is Ownable , ContextMixin , NativeMetaTransaction {
     }
 
     // Update fee address by the previous fee address.
-    function setFeeAddress(address _feeAddress) public {
+    function setFeeAddress(address _feeAddress) public onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
-        require(_msgSender() == feeAddress, "setFeeAddress: FORBIDDEN");
         feeAddress = _feeAddress;
     }
 
