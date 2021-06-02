@@ -1,43 +1,38 @@
 require("dotenv").config();
-const { utils, ethers } = require("ethers");
-const fs = require("fs");
-const chalk = require("chalk");
-
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 
-const defaultNetwork = "localhost"; // "hardhat" for tests
-const INFURA_API = process.env.INFURAKEY;
-const PRIVATE_KEY = process.env.PRIVATEKEY;
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 module.exports = {
-  defaultNetwork,
   networks: {
     localhost: {
       url: "http://localhost:8545", // uses account 0 of the hardhat node to deploy
     },
     mainnet: {
-      url: INFURA_API,
+      url: ALCHEMY_API_KEY,
       accounts: [`0x${PRIVATE_KEY}`],
     },
     rinkeby: {
-      url: INFURA_API,
+      url: ALCHEMY_API_KEY,
       accounts: [`0x${PRIVATE_KEY}`],
     },
     kovan: {
-      url: INFURA_API,
+      url: ALCHEMY_API_KEY,
       accounts: [`0x${PRIVATE_KEY}`],
     },
     ropsten: {
-      url: INFURA_API,
+      url: ALCHEMY_API_KEY,
       accounts: [`0x${PRIVATE_KEY}`],
     },
     matic: {
-      url: INFURA_API,
+      url: ALCHEMY_API_KEY,
       accounts: [`0x${PRIVATE_KEY}`],
     },
     hardhat: {
       forking: {
-        url: INFURA_API,
+        url: ALCHEMY_API_KEY,
         chainId: 42,
       },
     },
@@ -45,7 +40,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.7.0",
+        version: "0.7.6",
         settings: {
           optimizer: {
             enabled: true,
@@ -70,29 +65,10 @@ module.exports = {
     cache: "./cache",
     artifacts: "./artifacts",
   },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  }
 };
 
-task("accounts", "Prints the list of accounts", async () => {
-  if (defaultNetwork === "localhost") {
-    const provider = new ethers.providers.JsonRpcProvider(
-      "http://127.0.0.1:8545/"
-    );
-    const accounts = await provider.listAccounts();
-    for (let i = 0; i < accounts.length; i++) {
-      const accountBalance = await provider.getBalance(accounts[i]);
-      console.log(
-        "📄",
-        chalk.cyan(accounts[i]),
-        "💸",
-        chalk.magenta(utils.formatEther(accountBalance), "ETH")
-      );
-    }
-    console.log("\n");
-  } else {
-    console.log(
-      " ⚠️  This task only runs on JsonRpcProvider running a node at " +
-        chalk.magenta("localhost:8545") +
-        "\n"
-    );
-  }
-});

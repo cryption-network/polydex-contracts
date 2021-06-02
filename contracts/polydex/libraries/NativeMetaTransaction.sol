@@ -5,7 +5,7 @@ import './SafeMath.sol';
 
 
 contract NativeMetaTransaction is EIP712Base {
-    using SafeMathUniswap for uint;
+    using SafeMathPolydex for uint;
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
         bytes(
             "MetaTransaction(uint256 nonce,address from,bytes functionSignature)"
