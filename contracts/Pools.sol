@@ -247,7 +247,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_msgSender()];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
-        payOrLockupPendingReward();
+        payOrLockupPendingReward(_msgSender());
 
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
@@ -317,7 +317,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         user.whiteListOrNot[_user] = true;
     }
 
-    function isUserWhiteListed(address _owner , address _user) external {
+    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
         UserInfo storage user = userInfo[_owner];
         return user.whiteListOrNot[_user];
     }
