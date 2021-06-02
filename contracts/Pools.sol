@@ -239,6 +239,26 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         emit Deposit(_msgSender(), _amount);
     }
 
+    function depositFor(uint256 _amount,address _user) public {
+        UserInfo storage user = userInfo[_user];
+        user.whiteListOrNot[_user] = true;
+        updatePool();
+        payOrLockupPendingReward(_msgSender());
+
+        if (user.amount == 0 && _amount > 0) {
+            farmInfo.numFarmers++;
+        }
+
+        farmInfo.lpToken.safeTransferFrom(
+            address(_msgSender()),
+            address(this),
+            _amount
+        );
+        user.amount = user.amount.add(_amount);
+        user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
+        emit Deposit(_msgSender(), _amount);
+    }
+
     /**
      * @notice withdraw LP token function for _msgSender()
      * @param _amount the total withdrawable amount
