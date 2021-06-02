@@ -21,6 +21,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 rewardDebt; // Reward debt.
         uint256 rewardLockedUp; // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
+        mapping (address => bool) whiteListOrNot;
     }
 
     /// @notice all the settings for this farm in one struct
@@ -220,8 +221,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      */
     function deposit(uint256 _amount) public {
         UserInfo storage user = userInfo[_msgSender()];
+        user.whiteListOrNot[_msgSender()] = true;
         updatePool();
-        payOrLockupPendingReward();
+        payOrLockupPendingReward(_msgSender());
 
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
@@ -268,6 +270,34 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         emit Withdraw(_msgSender(), _amount);
     }
 
+    function withdrawFor(uint256 _amount,address _user) public {
+        UserInfo storage user = userInfo[_user];
+        require(user.whiteListOrNot[_msgSender()]);
+        require(user.amount >= _amount, "INSUFFICIENT");
+        updatePool();
+        payOrLockupPendingReward(_user);
+        
+        if (user.amount == _amount && _amount > 0) {
+            farmInfo.numFarmers--;
+        }
+
+        user.amount = user.amount.sub(_amount);
+
+        if (farmInfo.withdrawlFeeBP > 0) {
+            uint256 withdrawlFee =
+                _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
+            farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
+            farmInfo.lpToken.safeTransfer(
+                address(_msgSender()),
+                _amount.sub(withdrawlFee)
+            );
+        } else {
+            farmInfo.lpToken.safeTransfer(address(_msgSender()), _amount);
+        }
+        user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
+        emit Withdraw(_msgSender(), _amount);
+    }
+
     /**
      * @notice emergency functoin to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
      */
@@ -282,8 +312,18 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         user.rewardDebt = 0;
     }
 
-    function payOrLockupPendingReward() internal {
+    function addUserToWhiteList(address _user) external {
         UserInfo storage user = userInfo[_msgSender()];
+        user.whiteListOrNot[_user] = true;
+    }
+
+    function isUserWhiteListed(address _owner , address _user) external {
+        UserInfo storage user = userInfo[_owner];
+        return user.whiteListOrNot[_user];
+    }
+
+    function payOrLockupPendingReward(address _user) internal {
+        UserInfo storage user = userInfo[_user];
 
         if (user.nextHarvestUntil == 0) {
             user.nextHarvestUntil = block.timestamp.add(
@@ -309,12 +349,12 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 );
 
                 // send rewards
-                _safeRewardTransfer(_msgSender(), totalRewards);
+                _safeRewardTransfer(_user, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
             totalLockedUpRewards = totalLockedUpRewards.add(pending);
-            emit RewardLockedUp(_msgSender(), pending);
+            emit RewardLockedUp(_user, pending);
         }
     }
 
