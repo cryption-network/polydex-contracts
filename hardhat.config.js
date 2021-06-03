@@ -1,8 +1,6 @@
 require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-etherscan");
 
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 module.exports = {
@@ -10,32 +8,16 @@ module.exports = {
     localhost: {
       url: "http://localhost:8545", // uses account 0 of the hardhat node to deploy
     },
-    mainnet: {
-      url: ALCHEMY_API_KEY,
-      accounts: [`0x${PRIVATE_KEY}`],
-    },
-    rinkeby: {
-      url: ALCHEMY_API_KEY,
-      accounts: [`0x${PRIVATE_KEY}`],
-    },
-    kovan: {
-      url: ALCHEMY_API_KEY,
-      accounts: [`0x${PRIVATE_KEY}`],
-    },
-    ropsten: {
-      url: ALCHEMY_API_KEY,
-      accounts: [`0x${PRIVATE_KEY}`],
-    },
     matic: {
-      url: ALCHEMY_API_KEY,
+      url: 'https://rpc-mainnet.matic.network',
       accounts: [`0x${PRIVATE_KEY}`],
+      gasPrice: 2 * 1000000000  // 2 gwei
     },
-    hardhat: {
-      forking: {
-        url: ALCHEMY_API_KEY,
-        chainId: 42,
-      },
-    },
+    mumbai: {
+      url: `https://rpc-mumbai.maticvigil.com`,
+      accounts: [`0x${PRIVATE_KEY}`],
+      gasPrice: 2 * 1000000000  // 2 gwei
+    }
   },
   solidity: {
     compilers: [
@@ -64,11 +46,6 @@ module.exports = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
-  },
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: process.env.ETHERSCAN_API_KEY,
   }
 };
 

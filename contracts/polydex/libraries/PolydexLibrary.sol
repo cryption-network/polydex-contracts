@@ -23,7 +23,7 @@ library PolydexLibrary {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'ca2012ae67ed5583eef65fcae9e64ca4306e7b4ee8fd3fb0906a83c8b0fbd77d' // init code hash
+                hex'8cb41b27c88f8934c0773207afb757d84c4baa607990ad4a30505e42438d999a' // init code hash
             ))));
     }
 
