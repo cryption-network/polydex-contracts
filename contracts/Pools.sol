@@ -276,7 +276,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         withdrawInternal(_amount,_user);
     }
 
-    function withdrawInternal(uint256 _amount,address _user) public{
+    function withdrawInternal(uint256 _amount,address _user) internal{
         UserInfo storage user = userInfo[_user];
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;

@@ -396,7 +396,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         withdrawInternal(_pid,_amount ,_user);
     }
 
-    function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) public{
+    function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) internal{
        PoolInfo storage pool = poolInfo[_pid];
        UserInfo storage user = userInfo[_pid][_user];
 
