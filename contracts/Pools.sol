@@ -315,7 +315,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         view
         returns (bool)
     {
-        UserInfo memory user = userInfo[_owner];
+        UserInfo storage user = userInfo[_owner];
         return user.whiteListedHandlers[_user];
     }
 
