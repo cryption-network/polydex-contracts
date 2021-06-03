@@ -226,7 +226,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     function _depositInternal(uint256 _amount, address _user) internal {
-        UserInfo storage user = userInfo[_msgSender()];
+        UserInfo storage user = userInfo[_user];
         updatePool();
         payOrLockupPendingReward(_user);
         if (user.amount == 0 && _amount > 0) {
@@ -240,7 +240,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         );
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
-        emit Deposit(_msgSender(), _amount);
+        emit Deposit(_user, _amount);
     }
 
     /**
@@ -264,7 +264,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
-        payOrLockupPendingReward(_msgSender());
+        payOrLockupPendingReward(_user);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
