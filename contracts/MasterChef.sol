@@ -388,7 +388,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        require(whiteListedHandlers[_msgSender()][_user]);
+        require(whiteListedHandlers[_user][_msgSender()]);
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
         payOrLockupPendingcnt(_pid,_user);
