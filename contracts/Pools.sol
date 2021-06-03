@@ -311,7 +311,8 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     function isUserWhiteListed(address _owner, address _user)
-        external
+        public
+        view
         returns (bool)
     {
         UserInfo memory user = userInfo[_owner];
