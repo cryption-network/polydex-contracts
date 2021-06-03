@@ -331,7 +331,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.amount.mul(farmInfo.accRewardPerShare).div(1e12).sub(
                 user.rewardDebt
             );
-        if (canHarvest(_msgSender())) {
+        if (canHarvest(_user)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
 
