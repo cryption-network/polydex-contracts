@@ -21,7 +21,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 rewardDebt; // Reward debt.
         uint256 rewardLockedUp; // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
-        mapping (address => bool) whiteListedHandlers;
+        mapping(address => bool) whiteListedHandlers;
     }
 
     /// @notice all the settings for this farm in one struct
@@ -35,7 +35,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 endBlock;
         uint256 lastRewardBlock; // Last block number that reward distribution occurs.
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12
-        uint256 farmableSupply; // set in init, total amount of tokens farmable
         uint256 numFarmers;
         uint16 withdrawlFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
@@ -121,7 +120,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         farmInfo.accRewardPerShare = 0;
 
         farmInfo.endBlock = _endBlock;
-        farmInfo.farmableSupply = _amount;
         farmInfo.withdrawlFeeBP = _withdrawlFeeBP;
         farmInfo.harvestInterval = _harvestInterval;
     }
@@ -220,25 +218,17 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total deposit amount
      */
     function deposit(uint256 _amount) public {
-        UserInfo storage user = userInfo[_msgSender()];
-        user.whiteListedHandlers[_msgSender()] = true;
-        updatePool();
-        payOrLockupPendingReward(_msgSender());
-
-        depositInternal(_amount,_msgSender());
+        _depositInternal(_amount, _msgSender());
     }
 
-    function depositFor(uint256 _amount,address _user) public {
-        UserInfo storage user = userInfo[_user];
-        user.whiteListedHandlers[_user] = true;
+    function depositFor(uint256 _amount, address _user) public {
+        _depositInternal(_amount, _user);
+    }
+
+    function _depositInternal(uint256 _amount, address _user) internal {
+        UserInfo storage user = userInfo[_msgSender()];
         updatePool();
         payOrLockupPendingReward(_user);
-
-        depositInternal(_amount, _user);
-    }
-
-    function depositInternal(uint256 _amount,address _user) internal {
-        UserInfo storage user = userInfo[_user];
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -258,26 +248,23 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total withdrawable amount
      */
     function withdraw(uint256 _amount) public {
-        UserInfo storage user = userInfo[_msgSender()];
+        _withdrawInternal(_amount, _msgSender());
+    }
+
+    function withdrawFor(uint256 _amount, address _user) public {
+        UserInfo storage user = userInfo[_user];
+        require(
+            user.whiteListedHandlers[_msgSender()],
+            "Handler not whitelisted to withdraw"
+        );
+        _withdrawInternal(_amount, _user);
+    }
+
+    function _withdrawInternal(uint256 _amount, address _user) internal {
+        UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
         payOrLockupPendingReward(_msgSender());
-
-        withdrawInternal(_amount,_msgSender());
-    }
-
-    function withdrawFor(uint256 _amount,address _user) public {
-        UserInfo storage user = userInfo[_user];
-        require(user.whiteListedHandlers[_msgSender()]);
-        require(user.amount >= _amount, "INSUFFICIENT");
-        updatePool();
-        payOrLockupPendingReward(_user);
-
-        withdrawInternal(_amount,_user);
-    }
-
-    function withdrawInternal(uint256 _amount,address _user) internal{
-        UserInfo storage user = userInfo[_user];
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -298,7 +285,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
         emit Withdraw(_user, _amount);
     }
-     
+
     /**
      * @notice emergency functoin to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
      */
@@ -313,18 +300,21 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         user.rewardDebt = 0;
     }
 
-    function addUserToWhiteList(address _user) external {
+    function whitelistHandler(address _handler) external {
         UserInfo storage user = userInfo[_msgSender()];
-        user.whiteListedHandlers[_user] = true;
+        user.whiteListedHandlers[_handler] = true;
     }
-    
-    function removeUserFromWhiteList(address _user) external {
+
+    function removeWhitelistedHandler(address _handler) external {
         UserInfo storage user = userInfo[_msgSender()];
-        user.whiteListedHandlers[_user] = false;
+        user.whiteListedHandlers[_handler] = false;
     }
-    
-    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
-        UserInfo storage user = userInfo[_owner];
+
+    function isUserWhiteListed(address _owner, address _user)
+        external
+        returns (bool)
+    {
+        UserInfo memory user = userInfo[_owner];
         return user.whiteListedHandlers[_user];
     }
 
@@ -368,6 +358,16 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function setFeeAddress(address _feeAddress) public onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         feeAddress = _feeAddress;
+    }
+
+    // Function to update the end block for owner. To control the distribution duration.
+    function updateEndBlock(uint256 _endBlock) public onlyOwner {
+        farmInfo.endBlock = _endBlock;
+    }
+
+    function updateBlockReward(uint256 _blockReward) public onlyOwner {
+        updatePool();
+        farmInfo.blockReward = _blockReward;
     }
 
     /**
