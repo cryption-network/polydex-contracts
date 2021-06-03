@@ -338,21 +338,11 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Deposit LP tokens to MasterChef for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        whiteListedHandlers[_msgSender()][_msgSender()] = true;
-        updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_msgSender());
         depositInternal(_pid,_amount ,_msgSender());
     }
 
     // Deposit LP tokens to MasterChef for CNT allocation.
     function depositFor(uint256 _pid, uint256 _amount , address _user) public {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        whiteListedHandlers[_user][_user] = true;
-        updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_user);
         depositInternal(_pid,_amount ,_user);
     }
 
@@ -360,6 +350,11 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
+        whiteListedHandlers[_user][_user] = true;
+        
+        updatePool(_pid);
+        payOrLockupPendingcnt(_pid,_user);
+        
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(
                 address(_msgSender()),
@@ -375,31 +370,24 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        require(user.amount >= _amount, "withdraw: not good");
-        updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_msgSender());
-
         withdrawInternal(_pid,_amount ,_msgSender());
     }
 
     // Withdraw LP tokens from MasterChef.
     function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
         require(whiteListedHandlers[_user][_msgSender()]);
-        require(user.amount >= _amount, "withdraw: not good");
-        updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_user);
-
         withdrawInternal(_pid,_amount ,_user);
     }
 
     function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) internal{
        PoolInfo storage pool = poolInfo[_pid];
        UserInfo storage user = userInfo[_pid][_user];
-
+       
+       require(user.amount >= _amount, "withdraw: not good");
+       
+       updatePool(_pid);
+       payOrLockupPendingcnt(_pid,_user);  
+      
        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (pool.depositFeeBP > 0) {
