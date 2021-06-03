@@ -74,6 +74,8 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
+
+    mapping(address => mapping(address => bool)) public whiteListedHandlers;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when CNT mining starts.
@@ -338,8 +340,26 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_msgSender()];
+        whiteListedHandlers[_msgSender()][_msgSender()] = true;
         updatePool(_pid);
-        payOrLockupPendingcnt(_pid);
+        payOrLockupPendingcnt(_pid,_msgSender());
+        depositInternal(_pid,_amount ,_msgSender());
+    }
+
+    // Deposit LP tokens to MasterChef for CNT allocation.
+    function depositFor(uint256 _pid, uint256 _amount , address _user) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        whiteListedHandlers[_user][_user] = true;
+        updatePool(_pid);
+        payOrLockupPendingcnt(_pid,_user);
+        depositInternal(_pid,_amount ,_user);
+    }
+
+     function depositInternal(uint256 _pid, uint256 _amount , address _user) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(
                 address(_msgSender()),
@@ -350,8 +370,8 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Deposit(_msgSender(), _pid, _amount);
-    }
+        emit Deposit(_user, _pid, _amount);
+    }    
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
@@ -359,23 +379,42 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_pid][_msgSender()];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        payOrLockupPendingcnt(_pid);
+        payOrLockupPendingcnt(_pid,_msgSender());
 
-        if (_amount > 0) {
+        withdrawInternal(_pid,_amount ,_msgSender());
+    }
+
+    // Withdraw LP tokens from MasterChef.
+    function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        require(whiteListedHandlers[_msgSender()][_user]);
+        require(user.amount >= _amount, "withdraw: not good");
+        updatePool(_pid);
+        payOrLockupPendingcnt(_pid,_user);
+
+        withdrawInternal(_pid,_amount ,_user);
+    }
+
+    function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) public{
+       PoolInfo storage pool = poolInfo[_pid];
+       UserInfo storage user = userInfo[_pid][_user];
+
+       if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (pool.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
                 pool.lpToken.safeTransfer(feeAddress, depositFee);
                 pool.lpToken.safeTransfer(
-                    address(_msgSender()),
+                    address(_user),
                     _amount.sub(depositFee)
                 );
             } else {
-                pool.lpToken.safeTransfer(address(_msgSender()), _amount);
+                pool.lpToken.safeTransfer(address(_user), _amount);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Withdraw(_msgSender(), _pid, _amount);
+        emit Withdraw(_user, _pid, _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -390,10 +429,22 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         user.nextHarvestUntil = 0;
     }
 
+    function addUserToWhiteList(address _user) external {
+        whiteListedHandlers[_msgSender()][_user] = true;
+    }
+    
+    function removeUserFromWhiteList(address _user) external {
+        whiteListedHandlers[_msgSender()][_user] = false;
+    }
+    
+    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
+        return  whiteListedHandlers[_owner][_user];
+    }
+
     // Pay or lockup pending cnt.
-    function payOrLockupPendingcnt(uint256 _pid) internal {
+    function payOrLockupPendingcnt(uint256 _pid,address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
+        UserInfo storage user = userInfo[_pid][_user];
 
         if (user.nextHarvestUntil == 0) {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
@@ -401,7 +452,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
         uint256 pending =
             user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
-        if (canHarvest(_pid, _msgSender())) {
+        if (canHarvest(_pid, _user)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
 
@@ -415,12 +466,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 );
 
                 // send rewards
-                safeCNTTransfer(_msgSender(), totalRewards);
+                safeCNTTransfer(_user, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
             totalLockedUpRewards = totalLockedUpRewards.add(pending);
-            emit RewardLockedUp(_msgSender(), _pid, pending);
+            emit RewardLockedUp(_user, _pid, pending);
         }
     }
 
