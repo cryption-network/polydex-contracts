@@ -227,6 +227,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
     function _depositInternal(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
+        user.whiteListedHandlers[_user] = true;
         updatePool();
         payOrLockupPendingReward(_user);
         if (user.amount == 0 && _amount > 0) {
