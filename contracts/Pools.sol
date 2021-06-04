@@ -26,7 +26,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
     /// @notice all the settings for this farm in one struct
     struct FarmInfo {
-        IERC20 lpToken;
+        IERC20 inputToken;
         IERC20 rewardToken;
         uint256 startBlock;
         uint256 blockReward;
@@ -82,7 +82,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function init(
         IERC20 _rewardToken,
         uint256 _amount,
-        IERC20 _lpToken,
+        IERC20 _inputToken,
         uint256 _blockReward,
         uint256 _startBlock,
         uint256 _endBlock,
@@ -115,7 +115,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
         uint256 lastRewardBlock =
             block.number > _startBlock ? block.number : _startBlock;
-        farmInfo.lpToken = _lpToken;
+        farmInfo.inputToken = _inputToken;
         farmInfo.lastRewardBlock = lastRewardBlock;
         farmInfo.accRewardPerShare = 0;
 
@@ -161,7 +161,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function pendingReward(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accRewardPerShare = farmInfo.accRewardPerShare;
-        uint256 lpSupply = farmInfo.lpToken.balanceOf(address(this));
+        uint256 lpSupply = farmInfo.inputToken.balanceOf(address(this));
         if (block.number > farmInfo.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(farmInfo.lastRewardBlock, block.number);
@@ -195,7 +195,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         if (block.number <= farmInfo.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = farmInfo.lpToken.balanceOf(address(this));
+        uint256 lpSupply = farmInfo.inputToken.balanceOf(address(this));
         if (lpSupply == 0) {
             farmInfo.lastRewardBlock = block.number < farmInfo.endBlock
                 ? block.number
@@ -234,7 +234,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             farmInfo.numFarmers++;
         }
 
-        farmInfo.lpToken.safeTransferFrom(
+        farmInfo.inputToken.safeTransferFrom(
             address(_msgSender()),
             address(this),
             _amount
@@ -274,13 +274,13 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawlFeeBP > 0) {
                 uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
-                farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
-                farmInfo.lpToken.safeTransfer(
+                farmInfo.inputToken.safeTransfer(feeAddress, withdrawlFee);
+                farmInfo.inputToken.safeTransfer(
                     address(_user),
                     _amount.sub(withdrawlFee)
                 );
             } else {
-                farmInfo.lpToken.safeTransfer(address(_user), _amount);
+                farmInfo.inputToken.safeTransfer(address(_user), _amount);
             }
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
@@ -292,7 +292,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      */
     function emergencyWithdraw() public {
         UserInfo storage user = userInfo[_msgSender()];
-        farmInfo.lpToken.safeTransfer(address(_msgSender()), user.amount);
+        farmInfo.inputToken.safeTransfer(address(_msgSender()), user.amount);
         emit EmergencyWithdraw(_msgSender(), user.amount);
         if (user.amount > 0) {
             farmInfo.numFarmers--;
