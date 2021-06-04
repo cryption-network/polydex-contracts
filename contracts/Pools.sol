@@ -36,7 +36,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 lastRewardBlock; // Last block number that reward distribution occurs.
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12
         uint256 numFarmers;
-        uint16 withdrawlFeeBP; // Deposit fee in basis points
+        uint16 withdrawalFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
     }
 
@@ -46,7 +46,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
 
     // Max deposit fee: 10%. This number is later divided by 10000 for calculations.
-    uint16 public constant MAXIMUM_WITHDRAWL_FEE_BP = 1000;
+    uint16 public constant MAXIMUM_WITHDRAWAL_FEE_BP = 1000;
 
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
@@ -87,12 +87,12 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 _startBlock,
         uint256 _endBlock,
         uint256 _bonusEndBlock,
-        uint16 _withdrawlFeeBP,
+        uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         uint256 _bonus
     ) external onlyOwner {
         require(
-            _withdrawlFeeBP <= MAXIMUM_WITHDRAWL_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -120,7 +120,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         farmInfo.accRewardPerShare = 0;
 
         farmInfo.endBlock = _endBlock;
-        farmInfo.withdrawlFeeBP = _withdrawlFeeBP;
+        farmInfo.withdrawalFeeBP = _withdrawalFeeBP;
         farmInfo.harvestInterval = _harvestInterval;
     }
 
@@ -272,12 +272,12 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
         if(_amount > 0){
             user.amount = user.amount.sub(_amount);
-            if (farmInfo.withdrawlFeeBP > 0) {
-                uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
-                farmInfo.inputToken.safeTransfer(feeAddress, withdrawlFee);
+            if (farmInfo.withdrawalFeeBP > 0) {
+                uint256 withdrawalFee = _amount.mul(farmInfo.withdrawalFeeBP).div(10000);
+                farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
-                    _amount.sub(withdrawlFee)
+                    _amount.sub(withdrawalFee)
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);

@@ -47,7 +47,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 allocPoint; // How many allocation points assigned to this pool. CNTs to distribute per block.
         uint256 lastRewardBlock; // Last block number that CNTs distribution occurs.
         uint256 accCNTPerShare; // Accumulated CNTs per share, times 1e12. See below.
-        uint16 withdrawlFeeBP; // Deposit fee in basis points
+        uint16 withdrawalFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
     }
 
@@ -62,7 +62,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     // Max harvest interval: 14 days.
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
     // Max deposit fee: 10%.
-    uint16 public constant MAXIMUM_DEPOSIT_FEE_BP = 1000;
+    uint16 public constant MAXIMUM_WITHDRAWAL_FEE_BP = 1000;
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
     // Bonus muliplier for early cnt makers.
@@ -85,13 +85,13 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 indexed pid,
         uint256 allocPoint,
         IERC20 indexed lpToken,
-        uint16 withdrawlFeeBP,
+        uint16 withdrawalFeeBP,
         uint256 harvestInterval
     );
     event UpdatedPoolAlloc(
         uint256 indexed pid,
         uint256 allocPoint,
-        uint16 withdrawlFeeBP,
+        uint16 withdrawalFeeBP,
         uint256 harvestInterval
     );
     event PoolUpdated(
@@ -157,12 +157,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function add(
         uint256 _allocPoint,
         IERC20 _lpToken,
-        uint16 _withdrawlFeeBP,
+        uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
         require(
-            _withdrawlFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -181,7 +181,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 allocPoint: _allocPoint,
                 lastRewardBlock: lastRewardBlock,
                 accCNTPerShare: 0,
-                withdrawlFeeBP: _withdrawlFeeBP,
+                withdrawalFeeBP: _withdrawalFeeBP,
                 harvestInterval: _harvestInterval
             })
         );
@@ -190,7 +190,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
             poolInfo.length.sub(1),
             _allocPoint,
             _lpToken,
-            _withdrawlFeeBP,
+            _withdrawalFeeBP,
             _harvestInterval
         );
     }
@@ -199,12 +199,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function set(
         uint256 _pid,
         uint256 _allocPoint,
-        uint16 _withdrawlFeeBP,
+        uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
         require(
-            _withdrawlFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
             "set: invalid deposit fee basis points"
         );
         if (_withUpdate) {
@@ -214,13 +214,13 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
             _allocPoint
         );
         poolInfo[_pid].allocPoint = _allocPoint;
-        poolInfo[_pid].withdrawlFeeBP = _withdrawlFeeBP;
+        poolInfo[_pid].withdrawalFeeBP = _withdrawalFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
 
         emit UpdatedPoolAlloc(
             _pid,
             _allocPoint,
-            _withdrawlFeeBP,
+            _withdrawalFeeBP,
             _harvestInterval
         );
     }
@@ -390,12 +390,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
       
        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            if (pool.withdrawlFeeBP > 0) {
-                uint256 withdrawlFee = _amount.mul(pool.withdrawlFeeBP).div(10000);
-                pool.lpToken.safeTransfer(feeAddress, withdrawlFee);
+            if (pool.withdrawalFeeBP > 0) {
+                uint256 withdrawalFee = _amount.mul(pool.withdrawalFeeBP).div(10000);
+                pool.lpToken.safeTransfer(feeAddress, withdrawalFee);
                 pool.lpToken.safeTransfer(
                     address(_withdrawer),
-                    _amount.sub(withdrawlFee)
+                    _amount.sub(withdrawalFee)
                 );
             } else {
                 pool.lpToken.safeTransfer(address(_withdrawer), _amount);
