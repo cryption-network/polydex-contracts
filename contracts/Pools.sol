@@ -276,19 +276,11 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawlFee);
                 farmInfo.inputToken.safeTransfer(
-<<<<<<< Updated upstream
-                    address(_user),
-                    _amount.sub(withdrawlFee)
-                );
-            } else {
-                farmInfo.inputToken.safeTransfer(address(_user), _amount);
-=======
                     address(_withdrawer),
                     _amount.sub(withdrawlFee)
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
->>>>>>> Stashed changes
             }
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
