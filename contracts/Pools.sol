@@ -178,13 +178,13 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
     // View function to see if user can harvest cnt's.
     function canHarvest(address _user) public view returns (bool) {
-        UserInfo storage user = userInfo[_user];
+        UserInfo memory user = userInfo[_user];
         return block.timestamp >= user.nextHarvestUntil;
     }
 
     // View function to see if user harvest until time.
     function getHarvestUntil(address _user) public view returns (uint256) {
-        UserInfo storage user = userInfo[_user];
+        UserInfo memory user = userInfo[_user];
         return user.nextHarvestUntil;
     }
 
@@ -218,14 +218,14 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total deposit amount
      */
     function deposit(uint256 _amount) public {
-        _depositInternal(_amount, _msgSender());
+        _deposit(_amount, _msgSender());
     }
 
     function depositFor(uint256 _amount, address _user) public {
-        _depositInternal(_amount, _user);
+        _deposit(_amount, _user);
     }
 
-    function _depositInternal(uint256 _amount, address _user) internal {
+    function _deposit(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
         updatePool();
@@ -249,7 +249,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total withdrawable amount
      */
     function withdraw(uint256 _amount) public {
-        _withdrawInternal(_amount, _msgSender());
+        _withdraw(_amount, _msgSender());
     }
 
     function withdrawFor(uint256 _amount, address _user) public {
@@ -258,10 +258,10 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.whiteListedHandlers[_msgSender()],
             "Handler not whitelisted to withdraw"
         );
-        _withdrawInternal(_amount, _user);
+        _withdraw(_amount, _user);
     }
 
-    function _withdrawInternal(uint256 _amount, address _user) internal {
+    function _withdraw(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
@@ -270,25 +270,25 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             farmInfo.numFarmers--;
         }
 
-        user.amount = user.amount.sub(_amount);
-
-        if (farmInfo.withdrawlFeeBP > 0) {
-            uint256 withdrawlFee =
-                _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
-            farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
-            farmInfo.lpToken.safeTransfer(
-                address(_user),
-                _amount.sub(withdrawlFee)
-            );
-        } else {
-            farmInfo.lpToken.safeTransfer(address(_user), _amount);
+        if(_amount > 0){
+            user.amount = user.amount.sub(_amount);
+            if (farmInfo.withdrawlFeeBP > 0) {
+                uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
+                farmInfo.lpToken.safeTransfer(feeAddress, withdrawlFee);
+                farmInfo.lpToken.safeTransfer(
+                    address(_user),
+                    _amount.sub(withdrawlFee)
+                );
+            } else {
+                farmInfo.lpToken.safeTransfer(address(_user), _amount);
+            }
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
         emit Withdraw(_user, _amount);
     }
 
     /**
-     * @notice emergency functoin to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
+     * @notice emergency function to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
      */
     function emergencyWithdraw() public {
         UserInfo storage user = userInfo[_msgSender()];
