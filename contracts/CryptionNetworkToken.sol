@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 // CryptionNetworkToken with Governance.
 contract CryptionNetworkToken is ERC20("CryptionNetworkToken", "CNT"), Ownable {
-    constructor () public {
-        uint256 initialSupply = 600000;  
+    constructor (address _address) public {
+        uint256 initialSupply = 100000000;  
     	uint256 totalSupply = initialSupply.mul(1e18);  //600,000 CRYPTION NETWORK TOKEN Initial Premint Supply
         _mint(msg.sender, totalSupply); //mint all initial supply to contract deployer
     }

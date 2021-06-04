@@ -1,4 +1,6 @@
-// File: @openzeppelin/contracts/utils/Context.sol
+// Sources flattened with hardhat v2.2.1 https://hardhat.org
+
+// File @openzeppelin/contracts/utils/Context.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -15,14 +17,19 @@ pragma solidity >=0.6.0 <0.8.0;
  * This contract is only required for intermediate, library-like contracts.
  */
 abstract contract Context {
-    
+    function _msgSender() internal view virtual returns (address payable) {
+        return msg.sender;
+    }
+
     function _msgData() internal view virtual returns (bytes memory) {
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
         return msg.data;
     }
 }
 
-// File: @openzeppelin/contracts/token/ERC20/IERC20.sol
+
+// File @openzeppelin/contracts/token/ERC20/IERC20.sol@v3.4.0
+
 
 
 pragma solidity >=0.6.0 <0.8.0;
@@ -101,7 +108,9 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
+
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.4.0
+
 
 
 pragma solidity >=0.6.0 <0.8.0;
@@ -318,9 +327,11 @@ library SafeMath {
 }
 
 
+// File @openzeppelin/contracts/token/ERC20/ERC20.sol@v3.4.0
+
+
 
 pragma solidity >=0.6.0 <0.8.0;
-
 
 
 
@@ -431,7 +442,7 @@ contract ERC20 is Context, IERC20 {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
-        _transfer(msg.sender, recipient, amount);
+        _transfer(_msgSender(), recipient, amount);
         return true;
     }
 
@@ -450,7 +461,7 @@ contract ERC20 is Context, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        _approve(msg.sender, spender, amount);
+        _approve(_msgSender(), spender, amount);
         return true;
     }
 
@@ -469,7 +480,7 @@ contract ERC20 is Context, IERC20 {
      */
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "ERC20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -486,7 +497,7 @@ contract ERC20 is Context, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
+        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
         return true;
     }
 
@@ -505,7 +516,7 @@ contract ERC20 is Context, IERC20 {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
+        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
         return true;
     }
 
@@ -624,6 +635,9 @@ contract ERC20 is Context, IERC20 {
 }
 
 
+// File @openzeppelin/contracts/access/Ownable.sol@v3.4.0
+
+
 
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -648,7 +662,7 @@ abstract contract Ownable is Context {
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
     constructor () internal {
-        address msgSender = msg.sender;
+        address msgSender = _msgSender();
         _owner = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
     }
@@ -664,7 +678,7 @@ abstract contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(owner() == msg.sender, "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -692,15 +706,17 @@ abstract contract Ownable is Context {
 }
 
 
+// File contracts/CryptionNetworkToken.sol
+
+
+
 pragma solidity 0.6.12;
-
-
 
 
 // CryptionNetworkToken with Governance.
 contract CryptionNetworkToken is ERC20("CryptionNetworkToken", "CNT"), Ownable {
-    constructor () public {
-        uint256 initialSupply = 600000;  
+    constructor (address _address) public {
+        uint256 initialSupply = 100000000;  
     	uint256 totalSupply = initialSupply.mul(1e18);  //600,000 CRYPTION NETWORK TOKEN Initial Premint Supply
         _mint(msg.sender, totalSupply); //mint all initial supply to contract deployer
     }
@@ -951,11 +967,13 @@ contract CryptionNetworkToken is ERC20("CryptionNetworkToken", "CNT"), Ownable {
     }
 }
 
-// File: contracts/MasterChef.sol
 
-pragma solidity 0.6.12;
+// File @openzeppelin/contracts/utils/Address.sol@v3.4.0
 
-// 
+
+
+pragma solidity >=0.6.2 <0.8.0;
+
 /**
  * @dev Collection of functions related to the address type
  */
@@ -978,16 +996,14 @@ library Address {
      * ====
      */
     function isContract(address account) internal view returns (bool) {
-        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
-        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
-        // for accounts without code, i.e. `keccak256('')`
-        bytes32 codehash;
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // This method relies on extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
         // solhint-disable-next-line no-inline-assembly
-        assembly {
-            codehash := extcodehash(account)
-        }
-        return (codehash != accountHash && codehash != 0x0);
+        assembly { size := extcodesize(account) }
+        return size > 0;
     }
 
     /**
@@ -1007,11 +1023,11 @@ library Address {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, 'Address: insufficient balance');
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
         // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
-        (bool success, ) = recipient.call{value: amount}('');
-        require(success, 'Address: unable to send value, recipient may have reverted');
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     /**
@@ -1033,7 +1049,7 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-        return functionCall(target, data, 'Address: low-level call failed');
+      return functionCall(target, data, "Address: low-level call failed");
     }
 
     /**
@@ -1042,12 +1058,8 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCall(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        return _functionCallWithValue(target, data, 0, errorMessage);
+    function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, 0, errorMessage);
     }
 
     /**
@@ -1061,12 +1073,8 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value
-    ) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, value, 'Address: low-level call with value failed');
+    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
     }
 
     /**
@@ -1075,26 +1083,64 @@ library Address {
      *
      * _Available since v3.1._
      */
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        require(address(this).balance >= value, 'Address: insufficient balance for call');
-        return _functionCallWithValue(target, data, value, errorMessage);
-    }
-
-    function _functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 weiValue,
-        string memory errorMessage
-    ) private returns (bytes memory) {
-        require(isContract(target), 'Address: call to non-contract');
+    function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
+        require(address(this).balance >= value, "Address: insufficient balance for call");
+        require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{value: weiValue}(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
+        require(isContract(target), "Address: static call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        require(isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
         } else {
@@ -1114,6 +1160,15 @@ library Address {
     }
 }
 
+
+// File @openzeppelin/contracts/token/ERC20/SafeERC20.sol@v3.4.0
+
+
+
+pragma solidity >=0.6.0 <0.8.0;
+
+
+
 /**
  * @title SafeERC20
  * @dev Wrappers around ERC20 operations that throw on failure (when the token
@@ -1124,6 +1179,7 @@ library Address {
  * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
  */
 library SafeERC20 {
+    using SafeMath for uint256;
     using Address for address;
 
     function safeTransfer(IERC20 token, address to, uint256 value) internal {
@@ -1153,14 +1209,12 @@ library SafeERC20 {
     }
 
     function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 newAllowance = token.allowance(address(this), spender) + value;
+        uint256 newAllowance = token.allowance(address(this), spender).add(value);
         _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
     }
 
     function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 oldAllowance = token.allowance(address(this), spender);
-        require(oldAllowance >= value, "SafeERC20: decreased allowance below zero");
-        uint256 newAllowance = oldAllowance - value;
+        uint256 newAllowance = token.allowance(address(this), spender).sub(value, "SafeERC20: decreased allowance below zero");
         _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
     }
 
@@ -1183,6 +1237,11 @@ library SafeERC20 {
     }
 }
 
+
+// File contracts/libraries/Initializable.sol
+
+pragma solidity >= 0.6.6;
+
 contract Initializable {
     bool inited = false;
 
@@ -1191,8 +1250,12 @@ contract Initializable {
         _;
         inited = true;
     }
-}// 
+}
 
+
+// File contracts/libraries/EIP712Base.sol
+
+pragma solidity >= 0.6.6;
 
 contract EIP712Base is Initializable {
     struct EIP712Domain {
@@ -1266,7 +1329,13 @@ contract EIP712Base is Initializable {
     }
 }
 
-abstract contract  NativeMetaTransaction  is EIP712Base {
+
+// File contracts/libraries/NativeMetaTransaction.sol
+
+pragma solidity >= 0.6.6;
+
+
+contract NativeMetaTransaction is EIP712Base {
     using SafeMath for uint;
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
         bytes(
@@ -1365,26 +1434,43 @@ abstract contract  NativeMetaTransaction  is EIP712Base {
             );
     }
 
-    function _msgSender() internal view  virtual returns (address payable sender)  {
-        if(msg.sender == address(this)) {
+}
+
+
+// File contracts/libraries/ContextMixin.sol
+
+pragma solidity >= 0.6.6;
+
+abstract contract ContextMixin {
+    function msgSender() internal view returns (address payable sender) {
+        if (msg.sender == address(this)) {
             bytes memory array = msg.data;
             uint256 index = msg.data.length;
             assembly {
                 // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
-                sender := and(mload(add(array, index)), 0xffffffffffffffffffffffffffffffffffffffff)
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
             }
         } else {
             sender = msg.sender;
         }
         return sender;
     }
-
 }
+
+
+// File contracts/MasterChef.sol
+
+pragma solidity 0.6.12;
+
+
 
 
 
 // import "@nomiclabs/buidler/console.sol";
-interface IMigratorChef  {
+interface IMigratorChef {
     function migrate(IERC20 token) external returns (IERC20);
 }
 
@@ -1395,14 +1481,16 @@ interface IMigratorChef  {
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable ,NativeMetaTransaction{
+contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // Info of each user.
     struct UserInfo {
-        uint256 amount;     // How many LP tokens the user has provided.
+        uint256 amount; // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
+        uint256 rewardLockedUp; // Reward locked up.
+        uint256 nextHarvestUntil; // When can the user harvest again.
         //
         // We do some fancy math here. Basically, any point in time, the amount of CNTs
         // entitled to a user but is pending to be distributed is:
@@ -1418,10 +1506,12 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
-        uint256 allocPoint;       // How many allocation points assigned to this pool. CNTs to distribute per block.
-        uint256 lastRewardBlock;  // Last block number that CNTs distribution occurs.
+        IERC20 lpToken; // Address of LP token contract.
+        uint256 allocPoint; // How many allocation points assigned to this pool. CNTs to distribute per block.
+        uint256 lastRewardBlock; // Last block number that CNTs distribution occurs.
         uint256 accCNTPerShare; // Accumulated CNTs per share, times 1e12. See below.
+        uint16 depositFeeBP; // Deposit fee in basis points
+        uint256 harvestInterval; // Harvest interval in seconds
     }
 
     // The CNT TOKEN!
@@ -1430,6 +1520,14 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
     uint256 public bonusEndBlock;
     // CNT tokens created per block.
     uint256 public cntPerBlock;
+    // Deposit Fee address
+    address public feeAddress;
+    // Max harvest interval: 14 days.
+    uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
+    // Max deposit fee: 10%.
+    uint16 public constant MAXIMUM_DEPOSIT_FEE_BP = 1000;
+    // Total locked up rewards
+    uint256 public totalLockedUpRewards;
     // Bonus muliplier for early cnt makers.
     uint256 public BONUS_MULTIPLIER = 1;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
@@ -1438,38 +1536,77 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
     // Info of each pool.
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
-    mapping (uint256 => mapping (address => UserInfo)) public userInfo;
+    mapping(uint256 => mapping(address => UserInfo)) public userInfo;
+
+    mapping(address => mapping(address => bool)) public whiteListedHandlers;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when CNT mining starts.
     uint256 public startBlock;
-    
-    event PoolAddition(uint256 indexed pid, uint256 allocPoint, IERC20 indexed lpToken);
-    event UpdatedPoolAlloc(uint256 indexed pid, uint256 allocPoint);
-    event PoolUpdated(uint256 indexed pid, uint256 lastRewardBlock, uint256 lpSupply, uint256 accSushiPerShare);
+
+    event PoolAddition(
+        uint256 indexed pid,
+        uint256 allocPoint,
+        IERC20 indexed lpToken,
+        uint16 depositFeeBP,
+        uint256 harvestInterval
+    );
+    event UpdatedPoolAlloc(
+        uint256 indexed pid,
+        uint256 allocPoint,
+        uint16 depositFeeBP,
+        uint256 harvestInterval
+    );
+    event PoolUpdated(
+        uint256 indexed pid,
+        uint256 lastRewardBlock,
+        uint256 lpSupply,
+        uint256 accCNTPerShare
+    );
     event PoolMigrated(uint256 indexed pid);
     event MigratorUpdated(IMigratorChef indexed newMigrator);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event EmergencyWithdraw(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amount
+    );
+    event SetFeeAddress(address indexed user, address indexed _devAddress);
+    event RewardLockedUp(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amountLockedUp
+    );
 
     constructor(
         CryptionNetworkToken _cnt,
         uint256 _cntPerBlock,
+        address _feeAddress,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
         _initializeEIP712("MasterChef");
         cnt = _cnt;
         cntPerBlock = _cntPerBlock;
+        feeAddress = _feeAddress;
         startBlock = _startBlock;
         bonusEndBlock = _bonusEndBlock;
+    }
+
+    function _msgSender()
+        internal
+        view
+        override
+        returns (address payable sender)
+    {
+        return ContextMixin.msgSender();
     }
 
     function updateBonusMultiplier(uint256 multiplierNumber) public onlyOwner {
         BONUS_MULTIPLIER = multiplierNumber;
     }
-    
+
     function updateBlockRate(uint256 _cntPerBlock) external onlyOwner {
         cntPerBlock = _cntPerBlock;
     }
@@ -1480,33 +1617,77 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+    function add(
+        uint256 _allocPoint,
+        IERC20 _lpToken,
+        uint16 _depositFeeBP,
+        uint256 _harvestInterval,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+        uint256 lastRewardBlock =
+            block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
-            allocPoint: _allocPoint,
-            lastRewardBlock: lastRewardBlock,
-            accCNTPerShare: 0
-        }));
-        
-        emit PoolAddition(poolInfo.length.sub(1), _allocPoint, _lpToken);
+        poolInfo.push(
+            PoolInfo({
+                lpToken: _lpToken,
+                allocPoint: _allocPoint,
+                lastRewardBlock: lastRewardBlock,
+                accCNTPerShare: 0,
+                depositFeeBP: _depositFeeBP,
+                harvestInterval: _harvestInterval
+            })
+        );
+
+        emit PoolAddition(
+            poolInfo.length.sub(1),
+            _allocPoint,
+            _lpToken,
+            _depositFeeBP,
+            _harvestInterval
+        );
     }
 
     // Update the given pool's CNT allocation point. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
+    function set(
+        uint256 _pid,
+        uint256 _allocPoint,
+        uint16 _depositFeeBP,
+        uint256 _harvestInterval,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            "set: invalid deposit fee basis points"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
+            _allocPoint
+        );
         poolInfo[_pid].allocPoint = _allocPoint;
-        
-        emit UpdatedPoolAlloc(_pid, _allocPoint);
+        poolInfo[_pid].depositFeeBP = _depositFeeBP;
+        poolInfo[_pid].harvestInterval = _harvestInterval;
+
+        emit UpdatedPoolAlloc(
+            _pid,
+            _allocPoint,
+            _depositFeeBP,
+            _harvestInterval
+        );
     }
-    
+
     // Set the migrator contract. Can only be called by the owner.
     function setMigrator(IMigratorChef _migrator) public onlyOwner {
         migrator = _migrator;
@@ -1523,27 +1704,63 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
         IERC20 newLpToken = migrator.migrate(lpToken);
         require(bal == newLpToken.balanceOf(address(this)), "migrate: bad");
         pool.lpToken = newLpToken;
-        
+
         emit PoolMigrated(_pid);
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to)
+        public
+        view
+        returns (uint256)
+    {
         return _to.sub(_from).mul(BONUS_MULTIPLIER);
     }
 
     // View function to see pending CNTs on frontend.
-    function pendingCNT(uint256 _pid, address _user) external view returns (uint256) {
+    function pendingCNT(uint256 _pid, address _user)
+        external
+        view
+        returns (uint256)
+    {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accCNTPerShare = pool.accCNTPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 cntReward = multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accCNTPerShare = accCNTPerShare.add(cntReward.mul(1e12).div(lpSupply));
+            uint256 multiplier =
+                getMultiplier(pool.lastRewardBlock, block.number);
+            uint256 cntReward =
+                multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(
+                    totalAllocPoint
+                );
+            accCNTPerShare = accCNTPerShare.add(
+                cntReward.mul(1e12).div(lpSupply)
+            );
         }
-        return user.amount.mul(accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending =
+            user.amount.mul(accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        return pending.add(user.rewardLockedUp);
+    }
+
+    // View function to see if user can harvest cnt's.
+    function canHarvest(uint256 _pid, address _user)
+        public
+        view
+        returns (bool)
+    {
+        UserInfo storage user = userInfo[_pid][_user];
+        return block.timestamp >= user.nextHarvestUntil;
+    }
+
+    // View function to see if user harvest until time.
+    function getHarvestUntil(uint256 _pid, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        UserInfo storage user = userInfo[_pid][_user];
+        return user.nextHarvestUntil;
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -1553,7 +1770,6 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
             updatePool(pid);
         }
     }
-
 
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
@@ -1567,48 +1783,89 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 cntReward = multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        pool.accCNTPerShare = pool.accCNTPerShare.add(cntReward.mul(1e12).div(lpSupply));
+        uint256 cntReward =
+            multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(
+                totalAllocPoint
+            );
+        pool.accCNTPerShare = pool.accCNTPerShare.add(
+            cntReward.mul(1e12).div(lpSupply)
+        );
         pool.lastRewardBlock = block.number;
-        emit PoolUpdated(_pid, pool.lastRewardBlock, lpSupply, pool.accCNTPerShare);
+        emit PoolUpdated(
+            _pid,
+            pool.lastRewardBlock,
+            lpSupply,
+            pool.accCNTPerShare
+        );
     }
 
     // Deposit LP tokens to MasterChef for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
+        depositInternal(_pid,_amount ,_msgSender());
+    }
+
+    // Deposit LP tokens to MasterChef for CNT allocation.
+    function depositFor(uint256 _pid, uint256 _amount , address _user) public {
+        depositInternal(_pid,_amount ,_user);
+    }
+
+     function depositInternal(uint256 _pid, uint256 _amount , address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
+        UserInfo storage user = userInfo[_pid][_user];
+
+        whiteListedHandlers[_user][_user] = true;
+        
         updatePool(_pid);
-        if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
-            if(pending > 0) {
-                safeCNTTransfer(_msgSender(), pending);
-            }
-        }
+        payOrLockupPendingcnt(_pid,_user);
+        
         if (_amount > 0) {
-            pool.lpToken.safeTransferFrom(address(_msgSender()), address(this), _amount);
+            pool.lpToken.safeTransferFrom(
+                address(_msgSender()),
+                address(this),
+                _amount
+            );
             user.amount = user.amount.add(_amount);
+            user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Deposit(_msgSender(), _pid, _amount);
-    }
+        emit Deposit(_user, _pid, _amount);
+    }    
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
+        withdrawInternal(_pid,_amount ,_msgSender());
+    }
 
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        require(user.amount >= _amount, "withdraw: not good");
-        updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
-        if(pending > 0) {
-            safeCNTTransfer(_msgSender(), pending);
-        }
-        if(_amount > 0) {
+    // Withdraw LP tokens from MasterChef.
+    function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
+        require(whiteListedHandlers[_user][_msgSender()]);
+        withdrawInternal(_pid,_amount ,_user);
+    }
+
+    function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) internal{
+       PoolInfo storage pool = poolInfo[_pid];
+       UserInfo storage user = userInfo[_pid][_user];
+       
+       require(user.amount >= _amount, "withdraw: not good");
+       
+       updatePool(_pid);
+       payOrLockupPendingcnt(_pid,_user);  
+      
+       if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(_msgSender()), _amount);
+            if (pool.depositFeeBP > 0) {
+                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
+                pool.lpToken.safeTransfer(feeAddress, depositFee);
+                pool.lpToken.safeTransfer(
+                    address(_user),
+                    _amount.sub(depositFee)
+                );
+            } else {
+                pool.lpToken.safeTransfer(address(_user), _amount);
+            }
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
-        emit Withdraw(_msgSender(), _pid, _amount);
+        emit Withdraw(_user, _pid, _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -1619,6 +1876,61 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
         emit EmergencyWithdraw(_msgSender(), _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
+        user.rewardLockedUp = 0;
+        user.nextHarvestUntil = 0;
+    }
+
+    function addUserToWhiteList(address _user) external {
+        whiteListedHandlers[_msgSender()][_user] = true;
+    }
+    
+    function removeUserFromWhiteList(address _user) external {
+        whiteListedHandlers[_msgSender()][_user] = false;
+    }
+    
+    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
+        return  whiteListedHandlers[_owner][_user];
+    }
+
+    // Pay or lockup pending cnt.
+    function payOrLockupPendingcnt(uint256 _pid,address _user) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+
+        if (user.nextHarvestUntil == 0) {
+            user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+        }
+
+        uint256 pending =
+            user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        if (canHarvest(_pid, _user)) {
+            if (pending > 0 || user.rewardLockedUp > 0) {
+                uint256 totalRewards = pending.add(user.rewardLockedUp);
+
+                // reset lockup
+                totalLockedUpRewards = totalLockedUpRewards.sub(
+                    user.rewardLockedUp
+                );
+                user.rewardLockedUp = 0;
+                user.nextHarvestUntil = block.timestamp.add(
+                    pool.harvestInterval
+                );
+
+                // send rewards
+                safeCNTTransfer(_user, totalRewards);
+            }
+        } else if (pending > 0) {
+            user.rewardLockedUp = user.rewardLockedUp.add(pending);
+            totalLockedUpRewards = totalLockedUpRewards.add(pending);
+            emit RewardLockedUp(_user, _pid, pending);
+        }
+    }
+
+    // Update fee address by the previous fee address.
+    function setFeeAddress(address _feeAddress) public onlyOwner {
+        require(_feeAddress != address(0), "setFeeAddress: invalid address");
+        feeAddress = _feeAddress;
+        emit SetFeeAddress(_msgSender(), _feeAddress);
     }
 
     // Safe cnt transfer function, just in case if rounding error causes pool to not have enough CNTs.
@@ -1630,6 +1942,4 @@ contract MasterChef is Ownable ,NativeMetaTransaction{
             cnt.transfer(_to, _amount);
         }
     }
-    
-
 }

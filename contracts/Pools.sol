@@ -249,7 +249,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total withdrawable amount
      */
     function withdraw(uint256 _amount) public {
-        _withdraw(_amount, _msgSender());
+        _withdraw(_amount, _msgSender() , _msgSender());
     }
 
     function withdrawFor(uint256 _amount, address _user) public {
@@ -258,10 +258,10 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.whiteListedHandlers[_msgSender()],
             "Handler not whitelisted to withdraw"
         );
-        _withdraw(_amount, _user);
+        _withdraw(_amount, _user , _msgSender());
     }
 
-    function _withdraw(uint256 _amount, address _user) internal {
+    function _withdraw(uint256 _amount, address _user , address _withdrawer) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
@@ -276,11 +276,19 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 uint256 withdrawlFee = _amount.mul(farmInfo.withdrawlFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawlFee);
                 farmInfo.inputToken.safeTransfer(
+<<<<<<< Updated upstream
                     address(_user),
                     _amount.sub(withdrawlFee)
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(address(_user), _amount);
+=======
+                    address(_withdrawer),
+                    _amount.sub(withdrawlFee)
+                );
+            } else {
+                farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
+>>>>>>> Stashed changes
             }
         }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);

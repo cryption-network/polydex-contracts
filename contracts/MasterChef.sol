@@ -370,16 +370,16 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
-        _withdraw(_pid,_amount ,_msgSender());
+        _withdraw(_pid,_amount ,_msgSender(),_msgSender());
     }
 
     // Withdraw LP tokens from MasterChef.
     function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
         require(whiteListedHandlers[_user][_msgSender()]);
-        _withdraw(_pid,_amount ,_user);
+        _withdraw(_pid,_amount ,_user,_msgSender());
     }
 
-    function _withdraw(uint256 _pid, uint256 _amount ,address _user) internal{
+    function _withdraw(uint256 _pid, uint256 _amount ,address _user , address _withdrawer) internal{
        PoolInfo storage pool = poolInfo[_pid];
        UserInfo storage user = userInfo[_pid][_user];
        
@@ -394,11 +394,11 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 uint256 withdrawlFee = _amount.mul(pool.withdrawlFeeBP).div(10000);
                 pool.lpToken.safeTransfer(feeAddress, withdrawlFee);
                 pool.lpToken.safeTransfer(
-                    address(_user),
+                    address(_withdrawer),
                     _amount.sub(withdrawlFee)
                 );
             } else {
-                pool.lpToken.safeTransfer(address(_user), _amount);
+                pool.lpToken.safeTransfer(address(_withdrawer), _amount);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
