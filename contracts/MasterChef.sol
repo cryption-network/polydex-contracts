@@ -425,7 +425,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         whiteListedHandlers[_msgSender()][_user] = false;
     }
     
-    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
+    function isUserWhiteListed(address _owner , address _user) external view returns(bool) {
         return  whiteListedHandlers[_owner][_user];
     }
 
