@@ -353,7 +353,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         whiteListedHandlers[_user][_user] = true;
         
         updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_user);
+        payOrLockupPendingcnt(_pid,_user, _user);
         
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(
@@ -386,7 +386,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
        require(user.amount >= _amount, "withdraw: not good");
        
        updatePool(_pid);
-       payOrLockupPendingcnt(_pid,_user);  
+       payOrLockupPendingcnt(_pid,_user,_withdrawer);  
       
        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
@@ -430,7 +430,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Pay or lockup pending cnt.
-    function payOrLockupPendingcnt(uint256 _pid,address _user) internal {
+    function payOrLockupPendingcnt(uint256 _pid,address _user,address _withdrawer) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
@@ -454,7 +454,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 );
 
                 // send rewards
-                safeCNTTransfer(_user, totalRewards);
+                safeCNTTransfer(_withdrawer, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);

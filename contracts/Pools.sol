@@ -229,7 +229,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
         updatePool();
-        payOrLockupPendingReward(_user);
+        payOrLockupPendingReward(_user,_user);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -265,7 +265,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
-        payOrLockupPendingReward(_user);
+        payOrLockupPendingReward(_user,_withdrawer);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -320,7 +320,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(address _user) internal {
+    function payOrLockupPendingReward(address _user , address _withdrawer) internal {
         UserInfo storage user = userInfo[_user];
 
         if (user.nextHarvestUntil == 0) {
@@ -347,7 +347,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 );
 
                 // send rewards
-                _safeRewardTransfer(_user, totalRewards);
+                _safeRewardTransfer(_withdrawer, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
