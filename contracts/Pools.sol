@@ -233,13 +233,14 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
-
-        farmInfo.inputToken.safeTransferFrom(
-            address(_msgSender()),
-            address(this),
-            _amount
-        );
-        user.amount = user.amount.add(_amount);
+        if(_amount > 0){
+            farmInfo.inputToken.safeTransferFrom(
+                address(_msgSender()),
+                address(this),
+                _amount
+            );
+            user.amount = user.amount.add(_amount);
+        }
         user.rewardDebt = user.amount.mul(farmInfo.accRewardPerShare).div(1e12);
         emit Deposit(_user, _amount);
     }
