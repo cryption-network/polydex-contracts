@@ -5,7 +5,7 @@ const chalk = require("chalk");
 
 require("@nomiclabs/hardhat-waffle");
 
-const defaultNetwork = "localhost"; // "hardhat" for tests
+const defaultNetwork = "hardhat"; // "hardhat" for tests
 const INFURA_API = process.env.INFURAKEY;
 const PRIVATE_KEY = process.env.PRIVATEKEY;
 
