@@ -204,7 +204,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         bool _withUpdate
     ) public onlyOwner {
         require(
-            _withdrawalFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "set: invalid deposit fee basis points"
         );
         if (_withUpdate) {
