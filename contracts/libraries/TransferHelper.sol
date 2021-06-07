@@ -1,4 +1,4 @@
-pragma solidity 0.6.12;
+pragma solidity ^0.7.0;
 
 library TransferHelper {
     function safeApprove(address token, address to, uint value) internal {

@@ -1,15 +1,19 @@
 {
-  "name": "swapcafe-contracts",
+  "name": "polydex-contracts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "npm run lint && hardhat compile",
+    "compile": "npx hardhat compile",
     "coverage": "hardhat coverage",
     "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "prepublish": "rimraf build contracts/build artifacts cache",
     "prepare": "env COMPILE_MODE=production npm run compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deployFactory:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deployFactory.js",
+    "deployRouter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deployRouter.js",
+    "deployFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deployFactory.js",
+    "deployRouter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deployRouter.js"
   },
   "author": "",
   "license": "ISC",

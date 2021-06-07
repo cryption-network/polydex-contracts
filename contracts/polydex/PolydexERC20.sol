@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity =0.7.6;
 
 import './libraries/SafeMath.sol';
 
-contract UniswapV2ERC20 {
-    using SafeMathUniswap for uint;
+contract PolydexERC20 {
+    using SafeMathPolydex for uint;
 
-    string public constant name = 'PolyDEX LP Token';
-    string public constant symbol = 'PolyDEX-LP';
+    string public constant name = 'Polydex LP Token';
+    string public constant symbol = 'Polydex-LP';
     uint8 public constant decimals = 18;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -22,7 +22,7 @@ contract UniswapV2ERC20 {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
-    constructor() public {
+    constructor() {
         uint chainId;
         assembly {
             chainId := chainid()
@@ -80,7 +80,7 @@ contract UniswapV2ERC20 {
     }
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(deadline >= block.timestamp, 'UniswapV2: EXPIRED');
+        require(deadline >= block.timestamp, 'Polydex: EXPIRED');
         bytes32 digest = keccak256(
             abi.encodePacked(
                 '\x19\x01',
@@ -89,7 +89,7 @@ contract UniswapV2ERC20 {
             )
         );
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == owner, 'UniswapV2: INVALID_SIGNATURE');
+        require(recoveredAddress != address(0) && recoveredAddress == owner, 'Polydex: INVALID_SIGNATURE');
         _approve(owner, spender, value);
     }
 }
