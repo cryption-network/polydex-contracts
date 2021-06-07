@@ -5,6 +5,8 @@
 // Runtime Environment's members available in the global scope.
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
+const { weth } = require("./addresses.json");
+
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
@@ -22,6 +24,11 @@ async function main() {
   console.log("PolyDexFactory deployed at " + factory.address);
   let pairhash = await factory.pairCodeHash();
   console.log("PolyDexFactory Pair Code Hash " + pairhash);
+
+  const Router = await ethers.getContractFactory("UniswapV2Router02");
+  const router = await Router.deploy(factory.address, weth);
+  router.deployed();
+  console.log("PolyDexRouter deployed at " + router.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
