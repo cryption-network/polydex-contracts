@@ -176,7 +176,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
         ) {
             // totalStaked
-            lpSupply = totalInputTokensStaked
+            lpSupply = totalInputTokensStaked;
         } else {
             lpSupply = farmInfo.inputToken.balanceOf(address(this));
         }
