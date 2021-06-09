@@ -50,6 +50,8 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     // Max deposit fee: 10%. This number is later divided by 10000 for calculations.
     uint16 public constant MAXIMUM_WITHDRAWAL_FEE_BP = 1000;
 
+    uint256 totalInputTokensStaked = 0;
+
     // Total locked up rewards
     mapping(IERC20 => uint256) public totalLockedUpRewards;
 
@@ -143,10 +145,11 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _to the end of the period to measure rewards for
      * @return The weighted multiplier for the given period
      */
-    function getMultiplier(
-        uint256 _fromBlock,
-        uint256 _to
-    ) public view returns (uint256) {
+    function getMultiplier(uint256 _fromBlock, uint256 _to)
+        public
+        view
+        returns (uint256)
+    {
         uint256 _from =
             _fromBlock >= farmInfo.startBlock
                 ? _fromBlock
@@ -160,11 +163,23 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _user the user for whom unclaimed tokens will be shown
      * @return total amount of withdrawable reward tokens
      */
-    function pendingReward(address _user, uint256 _rewardInfoIndex) external view returns (uint256) {
+    function pendingReward(address _user, uint256 _rewardInfoIndex)
+        external
+        view
+        returns (uint256)
+    {
         UserInfo storage user = userInfo[_user];
         RewardInfo memory rewardInfo = rewardPool[_rewardInfoIndex];
         uint256 accRewardPerShare = rewardInfo.accRewardPerShare;
-        uint256 lpSupply = farmInfo.inputToken.balanceOf(address(this));
+        uint256 lpSupply = 0;
+        if (
+            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
+        ) {
+            // totalStaked
+            lpSupply = totalInputTokensStaked
+        } else {
+            lpSupply = farmInfo.inputToken.balanceOf(address(this));
+        }
         if (block.number > rewardInfo.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(rewardInfo.lastRewardBlock, block.number);
@@ -175,7 +190,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         }
 
         uint256 pending =
-            user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt[rewardInfo.rewardToken]);
+            user.amount.mul(accRewardPerShare).div(1e12).sub(
+                user.rewardDebt[rewardInfo.rewardToken]
+            );
         return pending.add(user.rewardLockedUp[rewardInfo.rewardToken]);
     }
 
@@ -199,7 +216,17 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         if (block.number <= rewardInfo.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = farmInfo.inputToken.balanceOf(address(this));
+        uint256 lpSupply = 0;
+
+        if (
+            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
+        ) {
+            // totalStaked
+            lpSupply = totalInputTokensStaked
+        } else {
+            lpSupply = farmInfo.inputToken.balanceOf(address(this));
+        }
+
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number < farmInfo.endBlock
                 ? block.number
@@ -232,17 +259,23 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function _deposit(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
-        payOrLockupPendingReward(_user,_user);
+        payOrLockupPendingReward(_user, _user);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
-        if(_amount > 0){
+        if (_amount > 0) {
             farmInfo.inputToken.safeTransferFrom(
                 address(_msgSender()),
                 address(this),
                 _amount
             );
             user.amount = user.amount.add(_amount);
+        if (
+            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
+        ) {
+            // totalStaked
+            totalInputTokensStaked = totalInputTokensStaked.add(_amount);
+        }
         }
         emit Deposit(_user, _amount);
     }
@@ -252,7 +285,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total withdrawable amount
      */
     function withdraw(uint256 _amount) public {
-        _withdraw(_amount, _msgSender() , _msgSender());
+        _withdraw(_amount, _msgSender(), _msgSender());
     }
 
     function withdrawFor(uint256 _amount, address _user) public {
@@ -261,21 +294,26 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.whiteListedHandlers[_msgSender()],
             "Handler not whitelisted to withdraw"
         );
-        _withdraw(_amount, _user , _msgSender());
+        _withdraw(_amount, _user, _msgSender());
     }
 
-    function _withdraw(uint256 _amount, address _user , address _withdrawer) internal {
+    function _withdraw(
+        uint256 _amount,
+        address _user,
+        address _withdrawer
+    ) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
-        payOrLockupPendingReward(_user,_withdrawer);
+        payOrLockupPendingReward(_user, _withdrawer);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
 
-        if(_amount > 0){
+        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee = _amount.mul(farmInfo.withdrawalFeeBP).div(10000);
+                uint256 withdrawalFee =
+                    _amount.mul(farmInfo.withdrawalFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
@@ -283,6 +321,13 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
+            }
+
+            if (
+                address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
+            ) {
+            // totalStaked
+            totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
             }
         }
         emit Withdraw(_user, _amount);
@@ -324,7 +369,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(address _user , address _withdrawer) internal {
+    function payOrLockupPendingReward(address _user, address _withdrawer)
+        internal
+    {
         UserInfo storage user = userInfo[_user];
 
         if (user.nextHarvestUntil == 0) {
@@ -341,7 +388,8 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             updatePool(i);
 
             uint256 userRewardDebt = user.rewardDebt[rewardInfo.rewardToken];
-            uint256 userRewardLockedUp = user.rewardLockedUp[rewardInfo.rewardToken];
+            uint256 userRewardLockedUp =
+                user.rewardLockedUp[rewardInfo.rewardToken];
             uint256 pending =
                 user.amount.mul(rewardInfo.accRewardPerShare).div(1e12).sub(
                     userRewardDebt
@@ -352,7 +400,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
 
                     // reset lockup
-                    totalLockedUpRewards[rewardInfo.rewardToken] = totalLockedUpRewards[rewardInfo.rewardToken].sub(
+                    totalLockedUpRewards[
+                        rewardInfo.rewardToken
+                    ] = totalLockedUpRewards[rewardInfo.rewardToken].sub(
                         userRewardLockedUp
                     );
                     user.rewardLockedUp[rewardInfo.rewardToken] = 0;
@@ -361,11 +411,19 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                     );
 
                     // send rewards
-                    _safeRewardTransfer(_withdrawer, totalRewards, rewardInfo.rewardToken);
+                    _safeRewardTransfer(
+                        _withdrawer,
+                        totalRewards,
+                        rewardInfo.rewardToken
+                    );
                 }
             } else if (pending > 0) {
-                user.rewardLockedUp[rewardInfo.rewardToken] = user.rewardLockedUp[rewardInfo.rewardToken].add(pending);
-                totalLockedUpRewards[rewardInfo.rewardToken] = totalLockedUpRewards[rewardInfo.rewardToken].add(pending);
+                user.rewardLockedUp[rewardInfo.rewardToken] = user
+                    .rewardLockedUp[rewardInfo.rewardToken]
+                    .add(pending);
+                totalLockedUpRewards[
+                    rewardInfo.rewardToken
+                ] = totalLockedUpRewards[rewardInfo.rewardToken].add(pending);
                 emit RewardLockedUp(_user, pending);
             }
 
@@ -373,7 +431,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 .amount
                 .mul(rewardInfo.accRewardPerShare)
                 .div(1e12);
-
         }
     }
 
@@ -388,7 +445,10 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         farmInfo.endBlock = _endBlock;
     }
 
-    function updateBlockReward(uint256 _blockReward, uint256 _rewardTokenIndex) public onlyOwner {
+    function updateBlockReward(uint256 _blockReward, uint256 _rewardTokenIndex)
+        public
+        onlyOwner
+    {
         updatePool(_rewardTokenIndex);
         rewardPool[_rewardTokenIndex].blockReward = _blockReward;
     }
@@ -398,7 +458,11 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total amount of tokens to transfer
      * @param _rewardToken token address for transferring tokens
      */
-    function _safeRewardTransfer(address _to, uint256 _amount, IERC20 _rewardToken) private {
+    function _safeRewardTransfer(
+        address _to,
+        uint256 _amount,
+        IERC20 _rewardToken
+    ) private {
         uint256 rewardBal = _rewardToken.balanceOf(address(this));
         if (_amount > rewardBal) {
             _rewardToken.transfer(_to, rewardBal);
