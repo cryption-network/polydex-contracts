@@ -5,7 +5,7 @@
 // Runtime Environment's members available in the global scope.
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
-const { weth } = require("./addresses.json");
+const Addresses = require("./addresses.json");
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -17,20 +17,16 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider();
   const [deployer] = await ethers.getSigners();
 
+  // Note : Make sure to change init pair hash in `pairForOldRouter` in 
+  //        PolyDexMigrator contract before deploying.
   // We get the contract to deploy
-  const Factory = await ethers.getContractFactory("UniswapV2Factory");
-  const factory = await Factory.deploy(deployer.address);
-  await factory.deployed();
-  console.log("PolyDexFactory deployed at " + factory.address);
-  let pairhash = await factory.pairCodeHash();
-  console.log("PolyDexFactory Pair Code Hash " + pairhash);
-
-
-  // Note: While deploying Router make sure to change pair hash in UniswapV2Library before deploying. 
-  const Router = await ethers.getContractFactory("UniswapV2Router02");
-  const router = await Router.deploy(factory.address, weth);
-  router.deployed();
-  console.log("PolyDexRouter deployed at " + router.address);
+  const PolydexMigrator = await ethers.getContractFactory("PolyDexMigrator");
+  const polydexMigratorInstance = await PolydexMigrator.deploy(
+    Addresses.oldrouter,
+    Addresses.newrouter
+  );
+  await polydexMigratorInstance.deployed();
+  console.log("PolydexMigrator deployed at " + polydexMigratorInstance.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

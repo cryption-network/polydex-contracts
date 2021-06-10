@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "npm run lint && hardhat compile",
+    "compile": "npx hardhat compile",
     "coverage": "hardhat coverage",
     "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "prepublish": "rimraf build contracts/build artifacts cache",
     "prepare": "env COMPILE_MODE=production npm run compile",
+    "deploy": "npx hardhat run scripts/deploymentScript.js --network matic",
+    "deploy-migrator": "npx hardhat run scripts/deploy_migrator.js --network matic",
     "test": "hardhat test"
   },
   "author": "",
