@@ -47,7 +47,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 allocPoint; // How many allocation points assigned to this pool. CNTs to distribute per block.
         uint256 lastRewardBlock; // Last block number that CNTs distribution occurs.
         uint256 accCNTPerShare; // Accumulated CNTs per share, times 1e12. See below.
-        uint16 depositFeeBP; // Deposit fee in basis points
+        uint16 withdrawalFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
     }
 
@@ -62,7 +62,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     // Max harvest interval: 14 days.
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
     // Max deposit fee: 10%.
-    uint16 public constant MAXIMUM_DEPOSIT_FEE_BP = 1000;
+    uint16 public constant MAXIMUM_WITHDRAWAL_FEE_BP = 1000;
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
     // Bonus muliplier for early cnt makers.
@@ -85,13 +85,13 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 indexed pid,
         uint256 allocPoint,
         IERC20 indexed lpToken,
-        uint16 depositFeeBP,
+        uint16 withdrawalFeeBP,
         uint256 harvestInterval
     );
     event UpdatedPoolAlloc(
         uint256 indexed pid,
         uint256 allocPoint,
-        uint16 depositFeeBP,
+        uint16 withdrawalFeeBP,
         uint256 harvestInterval
     );
     event PoolUpdated(
@@ -157,12 +157,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function add(
         uint256 _allocPoint,
         IERC20 _lpToken,
-        uint16 _depositFeeBP,
+        uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
         require(
-            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -181,7 +181,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 allocPoint: _allocPoint,
                 lastRewardBlock: lastRewardBlock,
                 accCNTPerShare: 0,
-                depositFeeBP: _depositFeeBP,
+                withdrawalFeeBP: _withdrawalFeeBP,
                 harvestInterval: _harvestInterval
             })
         );
@@ -190,7 +190,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
             poolInfo.length.sub(1),
             _allocPoint,
             _lpToken,
-            _depositFeeBP,
+            _withdrawalFeeBP,
             _harvestInterval
         );
     }
@@ -199,12 +199,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function set(
         uint256 _pid,
         uint256 _allocPoint,
-        uint16 _depositFeeBP,
+        uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
     ) public onlyOwner {
         require(
-            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "set: invalid deposit fee basis points"
         );
         if (_withUpdate) {
@@ -214,13 +214,13 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
             _allocPoint
         );
         poolInfo[_pid].allocPoint = _allocPoint;
-        poolInfo[_pid].depositFeeBP = _depositFeeBP;
+        poolInfo[_pid].withdrawalFeeBP = _withdrawalFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
 
         emit UpdatedPoolAlloc(
             _pid,
             _allocPoint,
-            _depositFeeBP,
+            _withdrawalFeeBP,
             _harvestInterval
         );
     }
@@ -286,7 +286,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         view
         returns (bool)
     {
-        UserInfo storage user = userInfo[_pid][_user];
+        UserInfo memory user = userInfo[_pid][_user];
         return block.timestamp >= user.nextHarvestUntil;
     }
 
@@ -296,7 +296,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         view
         returns (uint256)
     {
-        UserInfo storage user = userInfo[_pid][_user];
+        UserInfo memory user = userInfo[_pid][_user];
         return user.nextHarvestUntil;
     }
 
@@ -338,22 +338,22 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Deposit LP tokens to MasterChef for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
-        depositInternal(_pid,_amount ,_msgSender());
+        _deposit(_pid,_amount ,_msgSender());
     }
 
     // Deposit LP tokens to MasterChef for CNT allocation.
     function depositFor(uint256 _pid, uint256 _amount , address _user) public {
-        depositInternal(_pid,_amount ,_user);
+        _deposit(_pid,_amount ,_user);
     }
 
-     function depositInternal(uint256 _pid, uint256 _amount , address _user) internal {
+     function _deposit(uint256 _pid, uint256 _amount , address _user) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
         whiteListedHandlers[_user][_user] = true;
         
         updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_user);
+        payOrLockupPendingcnt(_pid,_user, _user);
         
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(
@@ -370,35 +370,35 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) public {
-        withdrawInternal(_pid,_amount ,_msgSender());
+        _withdraw(_pid,_amount ,_msgSender(),_msgSender());
     }
 
     // Withdraw LP tokens from MasterChef.
     function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
         require(whiteListedHandlers[_user][_msgSender()]);
-        withdrawInternal(_pid,_amount ,_user);
+        _withdraw(_pid,_amount ,_user,_msgSender());
     }
 
-    function withdrawInternal(uint256 _pid, uint256 _amount ,address _user) internal{
+    function _withdraw(uint256 _pid, uint256 _amount ,address _user , address _withdrawer) internal{
        PoolInfo storage pool = poolInfo[_pid];
        UserInfo storage user = userInfo[_pid][_user];
        
        require(user.amount >= _amount, "withdraw: not good");
        
        updatePool(_pid);
-       payOrLockupPendingcnt(_pid,_user);  
+       payOrLockupPendingcnt(_pid,_user,_withdrawer);  
       
        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            if (pool.depositFeeBP > 0) {
-                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
-                pool.lpToken.safeTransfer(feeAddress, depositFee);
+            if (pool.withdrawalFeeBP > 0) {
+                uint256 withdrawalFee = _amount.mul(pool.withdrawalFeeBP).div(10000);
+                pool.lpToken.safeTransfer(feeAddress, withdrawalFee);
                 pool.lpToken.safeTransfer(
-                    address(_user),
-                    _amount.sub(depositFee)
+                    address(_withdrawer),
+                    _amount.sub(withdrawalFee)
                 );
             } else {
-                pool.lpToken.safeTransfer(address(_user), _amount);
+                pool.lpToken.safeTransfer(address(_withdrawer), _amount);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
@@ -425,12 +425,12 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         whiteListedHandlers[_msgSender()][_user] = false;
     }
     
-    function isUserWhiteListed(address _owner , address _user) external returns(bool) {
+    function isUserWhiteListed(address _owner , address _user) external view returns(bool) {
         return  whiteListedHandlers[_owner][_user];
     }
 
     // Pay or lockup pending cnt.
-    function payOrLockupPendingcnt(uint256 _pid,address _user) internal {
+    function payOrLockupPendingcnt(uint256 _pid,address _user,address _withdrawer) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
@@ -454,7 +454,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
                 );
 
                 // send rewards
-                safeCNTTransfer(_user, totalRewards);
+                safeCNTTransfer(_withdrawer, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);

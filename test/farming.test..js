@@ -330,17 +330,17 @@ describe("MasterChef", function () {
       await this.chef
         .connect(this.alice)
         .deposit(0, "10", { from: this.alice.address });
-      // At block 605, she should have 1000*10 + 100*5 = 10500 pending.
+      // At block 605, she should have 1000*1 + 100*5 = 1500 pending.
       await advanceBlockTo(this.blocknumber + 605);
       expect(await this.chef.pendingCNT(0, this.alice.address)).to.equal(
-        "10500"
+        "1500"
       );
       // At block 606, Alice withdraws all pending rewards and should get 10600.
       await this.chef
         .connect(this.alice)
         .deposit(0, "0", { from: this.alice.address });
       expect(await this.chef.pendingCNT(0, this.alice.address)).to.equal("0");
-      expect(await this.CNT.balanceOf(this.alice.address)).to.equal("10600");
+      expect(await this.CNT.balanceOf(this.alice.address)).to.equal("1600");
     });
   });
 });
