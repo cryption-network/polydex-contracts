@@ -172,9 +172,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         RewardInfo memory rewardInfo = rewardPool[_rewardInfoIndex];
         uint256 accRewardPerShare = rewardInfo.accRewardPerShare;
         uint256 lpSupply = 0;
-        if (
-            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
-        ) {
+        if (address(farmInfo.inputToken) == address(rewardInfo.rewardToken)) {
             // totalStaked
             lpSupply = totalInputTokensStaked;
         } else {
@@ -218,11 +216,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         }
         uint256 lpSupply = 0;
 
-        if (
-            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
-        ) {
+        if (address(farmInfo.inputToken) == address(rewardInfo.rewardToken)) {
             // totalStaked
-            lpSupply = totalInputTokensStaked
+            lpSupply = totalInputTokensStaked;
         } else {
             lpSupply = farmInfo.inputToken.balanceOf(address(this));
         }
@@ -259,7 +255,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function _deposit(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
-        payOrLockupPendingReward(_user, _user);
+        payOrLockupPendingReward(_user, _user, _amount, true);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -270,12 +266,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 _amount
             );
             user.amount = user.amount.add(_amount);
-        if (
-            address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
-        ) {
-            // totalStaked
-            totalInputTokensStaked = totalInputTokensStaked.add(_amount);
-        }
         }
         emit Deposit(_user, _amount);
     }
@@ -304,7 +294,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     ) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
-        payOrLockupPendingReward(_user, _withdrawer);
+        payOrLockupPendingReward(_user, _withdrawer, _amount, false);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -321,13 +311,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
-            }
-
-            if (
-                address(farmInfo.inputToken) == address(rewardInfo.rewardToken)
-            ) {
-            // totalStaked
-            totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
             }
         }
         emit Withdraw(_user, _amount);
@@ -369,9 +352,12 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(address _user, address _withdrawer)
-        internal
-    {
+    function payOrLockupPendingReward(
+        address _user,
+        address _withdrawer,
+        uint256 _amount,
+        bool _isOperationAdd
+    ) internal {
         UserInfo storage user = userInfo[_user];
 
         if (user.nextHarvestUntil == 0) {
@@ -431,6 +417,20 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 .amount
                 .mul(rewardInfo.accRewardPerShare)
                 .div(1e12);
+
+            if (
+                address(farmInfo.inputToken) ==
+                address(rewardInfo.rewardToken)
+            ) {
+                // totalStaked
+                if (_isOperationAdd) {
+                    totalInputTokensStaked = totalInputTokensStaked.add(
+                        _amount
+                    );
+                } else {
+                    totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
+                }
+            }
         }
     }
 
