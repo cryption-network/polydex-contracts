@@ -9,7 +9,7 @@
     "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "prepublish": "rimraf build contracts/build artifacts cache",
     "prepare": "env COMPILE_MODE=production npm run compile",
-    "test": "hardhat test"
+    "test": "npx hardhat test"
   },
   "author": "",
   "license": "ISC",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "bignumber.js": "^9.0.1",
     "chalk": "^4.1.1",
     "dotenv": "^8.2.0"
   }
