@@ -18,28 +18,28 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     /// @notice information stuct on each user than stakes LP tokens.
     struct UserInfo {
         uint256 amount; // How many LP tokens the user has provided.
+        uint256 nextHarvestUntil; // When can the user harvest again.
         mapping(IERC20 => uint256) rewardDebt; // Reward debt.
         mapping(IERC20 => uint256) rewardLockedUp; // Reward locked up.
-        uint256 nextHarvestUntil; // When can the user harvest again.
         mapping(address => bool) whiteListedHandlers;
     }
 
     // Info of each pool.
     struct RewardInfo {
-        IERC20 rewardToken; // Address of reward token contract.
         uint256 accRewardPerShare;
         uint256 lastRewardBlock; // Last block number that rewards distribution occurs.
         uint256 blockReward;
+        IERC20 rewardToken; // Address of reward token contract.
     }
 
     /// @notice all the settings for this farm in one struct
     struct FarmInfo {
-        IERC20 inputToken;
         uint256 startBlock;
         uint256 endBlock;
         uint256 numFarmers;
-        uint16 withdrawalFeeBP; // Deposit fee in basis points
         uint256 harvestInterval; // Harvest interval in seconds
+        IERC20 inputToken;
+        uint16 withdrawalFeeBP; // Deposit fee in basis points
     }
 
     // Deposit Fee address

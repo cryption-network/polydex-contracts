@@ -122,7 +122,7 @@ describe("StakingPool", function async() {
 
     // 2nd reward token :
     // We have advanced 5-blocks. So rewards for 6 blocks is calculated
-    // Reward for 1-block is "200000000000000". So rewards for 51 blocks would be 1200000000000000.
+    // Reward for 1-block is "200000000000000". So rewards for 6 blocks would be 1200000000000000.
     expect(balanceOfDepositorForReward2).to.equal('1200000000000000');
 
   });
@@ -141,6 +141,34 @@ describe("StakingPool", function async() {
     const balanceOfDepositorForReward1 = await rewardToken1Instance.balanceOf(depositor1.address);
 
     // As withdrawal is called within harvest interval, no rewards is given.
+    expect(balanceOfDepositorForReward1).to.equal('0');
+
+  });
+
+  it("should whiltelist user to withdraw", async function () {
+
+    await lpTokenInstance.connect(depositor1).approve(stakingPoolInstance.address, depositAmount);
+    await stakingPoolInstance.connect(depositor1).deposit(
+      depositAmount
+    );
+
+    const proxyUser = accounts[3];
+    await stakingPoolInstance.connect(depositor1).whitelistHandler(proxyUser.address);
+
+    const currentBlockNumber = BigNumber.from(await ethers.provider.getBlockNumber());
+    const blocksToAdvance = currentBlockNumber.add(50);
+    await advanceBlockTo(blocksToAdvance);
+
+    await stakingPoolInstance.connect(proxyUser).withdrawFor(
+      depositAmount,
+      depositor1.address
+    );
+
+    const balanceOfDepositorForReward1 = await rewardToken1Instance.balanceOf(depositor1.address);
+    const balanceOfProxyUserForReward1 = await rewardToken1Instance.balanceOf(proxyUser.address);
+
+    
+    expect(balanceOfProxyUserForReward1).to.equal('5200000000000000');
     expect(balanceOfDepositorForReward1).to.equal('0');
 
   });
