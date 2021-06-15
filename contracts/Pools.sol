@@ -10,7 +10,6 @@ import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
-import "hardhat/console.sol";
 
 contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
@@ -151,8 +150,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         view
         returns (uint256)
     {
-        console.log("_fromBlock ", _fromBlock);
-        console.log("_to ", _to);
         uint256 _from =
             _fromBlock >= farmInfo.startBlock
                 ? _fromBlock
@@ -258,7 +255,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         } else {
             lpSupply = farmInfo.inputToken.balanceOf(address(this));
         }
-        console.log("lpSupply ", lpSupply);
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number < farmInfo.endBlock
                 ? block.number
@@ -267,9 +263,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         }
         uint256 multiplier =
             getMultiplier(rewardInfo.lastRewardBlock, block.number);
-        console.log("multiplier ", multiplier);
         uint256 tokenReward = multiplier.mul(rewardInfo.blockReward);
-        console.log("tokenReward ", tokenReward);
         rewardInfo.accRewardPerShare = rewardInfo.accRewardPerShare.add(
             tokenReward.mul(1e12).div(lpSupply)
         );
@@ -283,7 +277,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total deposit amount
      */
     function deposit(uint256 _amount) public {
-        console.log("block number : ", block.number);
         _deposit(_amount, _msgSender());
     }
 
@@ -306,6 +299,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             );
             user.amount = user.amount.add(_amount);
         }
+
         emit Deposit(_user, _amount);
     }
 
@@ -331,7 +325,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         address _user,
         address _withdrawer
     ) internal {
-        console.log("block numner ", block.number);
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         payOrLockupPendingReward(_user, _withdrawer, _amount, false);
@@ -399,7 +392,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         bool _isOperationAdd
     ) internal {
         UserInfo storage user = userInfo[_user];
-        console.log('user.nextHarvestUntil  :',user.nextHarvestUntil);
         if (user.nextHarvestUntil == 0) {
             user.nextHarvestUntil = block.timestamp.add(
                 farmInfo.harvestInterval
@@ -420,8 +412,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 user.amount.mul(rewardInfo.accRewardPerShare).div(1e12).sub(
                     userRewardDebt
                 );
-            console.log("pending ", pending);
-            console.log("canUserHarvest ", canUserHarvest);
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);

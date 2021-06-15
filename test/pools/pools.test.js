@@ -42,7 +42,6 @@ describe("StakingPool", function async() {
     stakingPoolInstance = await StakingPool.deploy(owner.address);
 
     initialBlockNumber = BigNumber.from(await ethers.provider.getBlockNumber());
-    console.log('initialBlockNumber : ', initialBlockNumber);
     endBlockNumber = initialBlockNumber.add(1000);
     
     initParams = {
@@ -73,7 +72,6 @@ describe("StakingPool", function async() {
   });
 
   it("should sucessfully withdraw reward", async function () {
-    console.log('current blocknumber ', await ethers.provider.getBlockNumber());
     await lpTokenInstance.connect(depositor1).approve(stakingPoolInstance.address, depositAmount);
     await stakingPoolInstance.connect(depositor1).deposit(
       depositAmount
@@ -83,11 +81,9 @@ describe("StakingPool", function async() {
     const blocksToAdvance = currentBlockNumber.add(50);
 
     await advanceBlockTo(blocksToAdvance);
-    console.log('calling withdrwa -----------');
     await stakingPoolInstance.connect(depositor1).withdraw(depositAmount);
 
     const balanceOfDepositor = await rewardToken1Instance.balanceOf(depositor1.address);
-    console.log('balanceOfDepositor : ', balanceOfDepositor);
     // We have advanced 50-blocks. So rewards for 51 blocks is calculated
     // Reward for 1-block is "100000000000000". So rewards for 51 blocks would be 5100000000000000.
     expect(balanceOfDepositor).to.equal('5100000000000000');
@@ -128,6 +124,24 @@ describe("StakingPool", function async() {
     // We have advanced 5-blocks. So rewards for 6 blocks is calculated
     // Reward for 1-block is "200000000000000". So rewards for 51 blocks would be 1200000000000000.
     expect(balanceOfDepositorForReward2).to.equal('1200000000000000');
+
+  });
+
+  it("should lock up rewards", async function () {
+
+    await lpTokenInstance.connect(depositor1).approve(stakingPoolInstance.address, depositAmount);
+    await stakingPoolInstance.connect(depositor1).deposit(
+      depositAmount
+    );
+
+    await stakingPoolInstance.connect(depositor1).withdraw(
+      depositAmount
+    );
+
+    const balanceOfDepositorForReward1 = await rewardToken1Instance.balanceOf(depositor1.address);
+
+    // As withdrawal is called within harvest interval, no rewards is given.
+    expect(balanceOfDepositorForReward1).to.equal('0');
 
   });
 });
