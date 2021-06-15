@@ -1,7 +1,11 @@
 require("dotenv").config();
-const { expect } = require("chai");
+const { expectRevert } = require("@openzeppelin/test-helpers");
+const chai = require("chai");
+const { solidity } = require("ethereum-waffle");
 const { ethers } = require("hardhat");
 const { advanceBlockTo } = require("./utilities/time.js");
+chai.use(solidity);
+const { expect } = chai;
 
 describe("MasterChef", function () {
   before(async function () {
@@ -114,9 +118,73 @@ describe("MasterChef", function () {
 
       expect(this.carolDepositedAmount).to.equal("0");
     });
-    // agar kisi ne depositfor kra to wo withdrawfor na kr pae if not whitelisted
-    // withdraw for kra to us user ke account mein pending cnt and userinfo amount aa jana chaiye
+
     // agar white listed hai to withdraw for kr pae
     // user whitelist se hata de to withdraw for na kr pae
+    // agar kisi ne depositfor kra to wo withdrawfor na kr pae if not whitelisted
+    it("whitelisted user should only be able to run withdrawFor", async function () {
+      // 100 per block farming rate starting at block 100 with bonus until block 1000
+      this.chef = await this.MasterChef.deploy(
+        this.CNT.address,
+        "1000",
+        this.adminaddress,
+        (this.blocknumber + 100).toString(),
+        (this.blocknumber + 100).toString()
+      );
+      await this.chef.deployed();
+
+      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+
+      await this.chef.add("100", this.lp.address, 0, 0, true);
+
+      // deposit for
+      await this.lp.connect(this.carol).approve(this.chef.address, "1000");
+      await this.chef
+        .connect(this.carol)
+        .depositFor(0, "100", this.bob.address);
+
+      await advanceBlockTo(this.blocknumber + 100);
+
+      await expect(
+        this.chef.connect(this.carol).withdrawFor("0", "100", this.bob.address)
+      ).to.be.revertedWith("user not whitelisted");
+
+      await this.chef.connect(this.bob).addUserToWhiteList(this.carol.address);
+
+      this.pendingcntofBob = await this.chef.pendingCNT("0", this.bob.address);
+      // 1block
+      await this.chef
+        .connect(this.carol)
+        .withdrawFor("0", "100", this.bob.address);
+
+      this.bobuserinfo = await this.chef.userInfo("0", this.bob.address);
+      this.bobDepositedAmount = await this.bobuserinfo["amount"].toString();
+
+      this.pendingcntAfterWithdrawFor = await this.chef.pendingCNT(
+        "0",
+        this.bob.address
+      );
+      // bob ka balance 0
+      expect(this.bobDepositedAmount).to.be.equal("0");
+      // pending 0
+      expect(this.pendingcntAfterWithdrawFor).to.be.equal("0");
+
+      // carol ka balance of lp == 100 + 900
+      expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000");
+      // cnt pending == 3000
+      expect(await this.CNT.balanceOf(this.carol.address)).to.equal("2000");
+
+      await this.chef
+        .connect(this.bob)
+        .removeUserFromWhiteList(this.carol.address);
+
+      await this.lp.connect(this.bob).approve(this.chef.address, "100");
+      await this.chef.connect(this.bob).deposit(0, "100");
+
+      // error
+      await expect(
+        this.chef.connect(this.carol).withdrawFor("0", "100", this.bob.address)
+      ).to.be.revertedWith("user not whitelisted");
+    });
   });
 });
