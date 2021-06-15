@@ -3,7 +3,7 @@ const { expectRevert } = require("@openzeppelin/test-helpers");
 const chai = require("chai");
 const { solidity } = require("ethereum-waffle");
 const { ethers } = require("hardhat");
-const { advanceBlockTo } = require("./utilities/time.js");
+const { advanceBlockTo, advanceTime } = require("./utilities/time.js");
 chai.use(solidity);
 const { expect } = chai;
 
@@ -70,9 +70,6 @@ describe("MasterChef", function () {
       );
     });
 
-    // scenarios about deposit for and withdraw for
-    // deposit for kra to jiske liye kra uske userinfo mein deposit ho jae
-    // pending reward bhi mile user ko
     it("checking deposit for functionlity", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
       this.chef = await this.MasterChef.deploy(
@@ -119,9 +116,6 @@ describe("MasterChef", function () {
       expect(this.carolDepositedAmount).to.equal("0");
     });
 
-    // agar white listed hai to withdraw for kr pae
-    // user whitelist se hata de to withdraw for na kr pae
-    // agar kisi ne depositfor kra to wo withdrawfor na kr pae if not whitelisted
     it("whitelisted user should only be able to run withdrawFor", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
       this.chef = await this.MasterChef.deploy(
@@ -185,6 +179,119 @@ describe("MasterChef", function () {
       await expect(
         this.chef.connect(this.carol).withdrawFor("0", "100", this.bob.address)
       ).to.be.revertedWith("user not whitelisted");
+    });
+  });
+
+  context("Harvest Time Lock", function () {
+    beforeEach(async function () {
+      this.provider = new ethers.providers.JsonRpcProvider();
+      this.blocknumber = await this.provider.getBlockNumber();
+      this.lp = await this.ERC20Mock.deploy("LPToken", "LP", "10000000000");
+
+      await this.lp.transfer(this.alice.address, "1000");
+
+      await this.lp.transfer(this.bob.address, "1000");
+
+      await this.lp.transfer(this.carol.address, "1000");
+
+      this.lp2 = await this.ERC20Mock.deploy("LPToken2", "LP2", "10000000000");
+
+      await this.lp2.transfer(this.alice.address, "1000");
+
+      await this.lp2.transfer(this.bob.address, "1000");
+
+      await this.lp2.transfer(this.carol.address, "1000");
+    });
+
+    it("reward got unlocked only after harvestInterval", async function () {
+      // 100 per block farming rate starting at block 100 with bonus until block 1000
+      this.chef = await this.MasterChef.deploy(
+        this.CNT.address,
+        "1000",
+        this.adminaddress,
+        (this.blocknumber + 100).toString(),
+        (this.blocknumber + 100).toString()
+      );
+      await this.chef.deployed();
+
+      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+
+      // reward lock period is 5 minutes
+      await this.chef.add("100", this.lp.address, 0, 300, true);
+
+      await this.lp.connect(this.bob).approve(this.chef.address, "1000");
+      await this.chef.connect(this.bob).deposit(0, "100");
+
+      await advanceBlockTo(this.blocknumber + 100);
+
+      await this.chef.connect(this.bob).deposit(0, "0"); // block 101
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("1000");
+
+      await this.chef.connect(this.bob).deposit(0, "100"); // block 102
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("2000");
+
+      await advanceTime(300);
+
+      // reward got unlocked only after time set ie 300 seconds
+      await this.chef.connect(this.bob).deposit(0, "0"); // block 103
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3000");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
+    });
+
+    it("pending reward give after harvest interval if use withdraw", async function () {
+      // 100 per block farming rate starting at block 100 with bonus until block 1000
+      this.chef = await this.MasterChef.deploy(
+        this.CNT.address,
+        "1000",
+        this.adminaddress,
+        (this.blocknumber + 100).toString(),
+        (this.blocknumber + 100).toString()
+      );
+      await this.chef.deployed();
+
+      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+
+      // reward lock period is 5 minutes
+      await this.chef.add("100", this.lp.address, 0, 300, true);
+
+      await this.lp.connect(this.bob).approve(this.chef.address, "1000");
+      await this.chef.connect(this.bob).deposit(0, "100");
+
+      await advanceBlockTo(this.blocknumber + 102);
+
+      // withdraw 10
+      await this.chef.connect(this.bob).withdraw(0, "10"); // block 103
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("3000");
+
+      // 1000 - 100 + 10
+      expect(await this.lp.balanceOf(this.bob.address)).to.equal("910");
+
+      await advanceTime(300);
+
+      this.canharvest = await this.chef.canHarvest("0", this.bob.address);
+      console.log(this.canharvest.toString());
+
+      this.harvestuntil = await this.chef.getHarvestUntil(
+        "0",
+        this.bob.address
+      );
+      console.log(this.harvestuntil.toString());
+
+      await this.chef.connect(this.bob).withdraw(0, "90"); // block 104
+      expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000");
+
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal(3999);
+      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
+
+      // 1000 - 100 + 10 + 90
+
+      await this.chef.connect(this.bob).deposit(0, "100"); // 105 - 4 block rewards
+      await advanceBlockTo(this.blocknumber + 106);
+      expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3999");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
     });
   });
 });
