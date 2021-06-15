@@ -375,7 +375,7 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
 
     // Withdraw LP tokens from MasterChef.
     function withdrawFor(uint256 _pid, uint256 _amount ,address _user) public {
-        require(whiteListedHandlers[_user][_msgSender()]);
+        require(whiteListedHandlers[_user][_msgSender()],"user not whitelisted");
         _withdraw(_pid,_amount ,_user,_msgSender());
     }
 
