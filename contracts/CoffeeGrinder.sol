@@ -65,7 +65,7 @@ contract CoffeeGrinder is Ownable {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(token0, token1));
-        pair.transfer(address(pair), pair.balanceOf(address(this)));
+        IERC20(address(pair)).safeTransfer(address(pair), pair.balanceOf(address(this)));
         pair.burn(address(this));
         // First we convert everything to WMATIC
         uint256 wmaticAmount = _toWMATIC(token0) + _toWMATIC(token1);
