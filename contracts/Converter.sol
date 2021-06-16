@@ -78,6 +78,13 @@ contract Converter is Ownable {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
+
+        _safeTransfer(
+            address(pair),
+            address(pair),
+            pair.balanceOf(address(this))
+        );
+
         pair.transfer(address(pair), pair.balanceOf(address(this)));
         pair.burn(address(this));
         // First we convert everything to WMATIC
