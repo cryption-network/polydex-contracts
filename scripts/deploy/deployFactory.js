@@ -13,7 +13,7 @@ async function main() {
   console.log("PolydexFactory deployed to:", factory.address);
 
   let pairhash = await factory.pairCodeHash();
-   // Note: While deploying Router make sure to change pair hash in UniswapV2Library before deploying. 
+   // Note: While deploying Router make sure to change pair hash in PolydexLibrary before deploying.
   console.log("PolydexFactory Pair Init Code Hash:", pairhash);
 
 }

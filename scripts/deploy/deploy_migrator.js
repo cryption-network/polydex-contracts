@@ -5,7 +5,7 @@
 // Runtime Environment's members available in the global scope.
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
-const Addresses = require("./addresses.json");
+const Addresses = require("../addresses.json");
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -18,7 +18,7 @@ async function main() {
   const [deployer] = await ethers.getSigners();
 
   // Note : Make sure to change init pair hash in `pairForOldRouter` in 
-  //        PolyDexMigrator contract before deploying.
+  //        PolydexMigrator contract before deploying.
   // We get the contract to deploy
   const PolydexMigrator = await ethers.getContractFactory("PolyDexMigrator");
   const polydexMigratorInstance = await PolydexMigrator.deploy(
