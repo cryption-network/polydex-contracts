@@ -1,4 +1,3 @@
-
 pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -8,7 +7,7 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "./polydex/interfaces/IPolydexFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import './CryptionNetworkToken.sol';
+import "./CryptionNetworkToken.sol";
 
 // Converter is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
 // This contract handles "serving up" rewards for xCNT holders & also burning some by trading tokens collected from fees for CNT.
@@ -27,17 +26,23 @@ contract Converter is Ownable {
     uint16 public platformFeesAllocation;
     address public platformAddr;
     uint256 private totalCNTAccumulated;
-        
-    event CNTAccumulated(uint256 stakersAllocated,uint256 burnt,uint256 platformFees);
-    
-    constructor(IPolydexFactory _factory,
-                address _coffeeTable,
-                CryptionNetworkToken _cnt,
-                address _wmatic,
-                uint16 _burnAllocation,
-                uint16 _stakersAllocation,
-                uint16 _platformFeesAllocation,
-                address _platformAddr) {
+
+    event CNTAccumulated(
+        uint256 stakersAllocated,
+        uint256 burnt,
+        uint256 platformFees
+    );
+
+    constructor(
+        IPolydexFactory _factory,
+        address _coffeeTable,
+        CryptionNetworkToken _cnt,
+        address _wmatic,
+        uint16 _burnAllocation,
+        uint16 _stakersAllocation,
+        uint16 _platformFeesAllocation,
+        address _platformAddr
+    ) {
         factory = _factory;
         cnt = _cnt;
         coffeeTable = _coffeeTable;
@@ -48,32 +53,48 @@ contract Converter is Ownable {
         platformAddr = _platformAddr;
     }
 
-    // Set the allocation to handle accumulated swap fees 
-    function setAllocation(uint16 _burnAllocation, uint16 _stakersAllocation, uint16 _platformFeesAllocation) external onlyOwner {
-        require (_burnAllocation + _stakersAllocation + _platformFeesAllocation == 1000, 'invalid allocations');
+    // Set the allocation to handle accumulated swap fees
+    function setAllocation(
+        uint16 _burnAllocation,
+        uint16 _stakersAllocation,
+        uint16 _platformFeesAllocation
+    ) external onlyOwner {
+        require(
+            _burnAllocation + _stakersAllocation + _platformFeesAllocation ==
+                1000,
+            "invalid allocations"
+        );
         burnAllocation = _burnAllocation;
         stakersAllocation = _stakersAllocation;
         platformFeesAllocation = _platformFeesAllocation;
     }
-    
+
     function updateCoffeeTable(address _newCoffeeTable) external onlyOwner {
-        require (_newCoffeeTable != address(0), 'Address cant be zero Address');
+        require(_newCoffeeTable != address(0), "Address cant be zero Address");
         coffeeTable = _newCoffeeTable;
     }
-    
+
     function convert(address token0, address token1) public {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
-        pair.transfer(address(pair), pair.balanceOf(address(this)));
+
+        _safeTransfer(
+            address(pair),
+            address(pair),
+            pair.balanceOf(address(this))
+        );
+
         pair.burn(address(this));
         // First we convert everything to WMATIC
         uint256 wmaticAmount = _toWMATIC(token0) + _toWMATIC(token1);
         // Then we convert the WMATIC to CryptionToken
         _toCNT(wmaticAmount);
-        emit CNTAccumulated(totalCNTAccumulated.mul(stakersAllocation).div(1000),
-                            totalCNTAccumulated.mul(burnAllocation).div(1000),
-                            totalCNTAccumulated.mul(platformFeesAllocation).div(1000));
+        emit CNTAccumulated(
+            totalCNTAccumulated.mul(stakersAllocation).div(1000),
+            totalCNTAccumulated.mul(burnAllocation).div(1000),
+            totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
+        );
         totalCNTAccumulated = 0;
     }
 
@@ -81,16 +102,24 @@ contract Converter is Ownable {
     function _toWMATIC(address token) internal returns (uint256) {
         // If the passed token is CryptionToken, don't convert anything
         if (token == address(cnt)) {
-            uint amount = IERC20(token).balanceOf(address(this)); 
-            _safeTransfer(token, coffeeTable, amount.mul(stakersAllocation).div(1000));
+            uint256 amount = IERC20(token).balanceOf(address(this));
+            _safeTransfer(
+                token,
+                coffeeTable,
+                amount.mul(stakersAllocation).div(1000)
+            );
             cnt.burn(amount.mul(burnAllocation).div(1000));
-            _safeTransfer(token, platformAddr, amount.mul(platformFeesAllocation).div(1000));
-            totalCNTAccumulated+=amount ;
+            _safeTransfer(
+                token,
+                platformAddr,
+                amount.mul(platformFeesAllocation).div(1000)
+            );
+            totalCNTAccumulated += amount;
             return 0;
         }
         // If the passed token is WMATIC, don't convert anything
         if (token == wmatic) {
-            uint amount = IERC20(token).balanceOf(address(this));
+            uint256 amount = IERC20(token).balanceOf(address(this));
             _safeTransfer(token, factory.getPair(wmatic, address(cnt)), amount);
             return amount;
         }
@@ -100,45 +129,68 @@ contract Converter is Ownable {
             return 0;
         }
         // Choose the correct reserve to swap from
-        (uint reserve0, uint reserve1,) = pair.getReserves();
+        (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
         address token0 = pair.token0();
-        (uint reserveIn, uint reserveOut) = token0 == token ? (reserve0, reserve1) : (reserve1, reserve0);
+        (uint256 reserveIn, uint256 reserveOut) =
+            token0 == token ? (reserve0, reserve1) : (reserve1, reserve0);
         // Calculate information required to swap
-        uint amountIn = IERC20(token).balanceOf(address(this));
-        uint amountInWithFee = amountIn.mul(997);
-        uint numerator = amountInWithFee.mul(reserveOut);
-        uint denominator = reserveIn.mul(1000).add(amountInWithFee);
-        uint amountOut = numerator / denominator;
-        (uint amount0Out, uint amount1Out) = token0 == token ? (uint(0), amountOut) : (amountOut, uint(0));
+        uint256 amountIn = IERC20(token).balanceOf(address(this));
+        uint256 amountInWithFee = amountIn.mul(997);
+        uint256 numerator = amountInWithFee.mul(reserveOut);
+        uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
+        uint256 amountOut = numerator / denominator;
+        (uint256 amount0Out, uint256 amount1Out) =
+            token0 == token ? (uint256(0), amountOut) : (amountOut, uint256(0));
         // Swap the token for WMATIC
         _safeTransfer(token, address(pair), amountIn);
-        pair.swap(amount0Out, amount1Out, factory.getPair(wmatic, address(cnt)), new bytes(0));
+        pair.swap(
+            amount0Out,
+            amount1Out,
+            factory.getPair(wmatic, address(cnt)),
+            new bytes(0)
+        );
         return amountOut;
     }
-    
+
     // Converts WMATIC to CryptionToken
     function _toCNT(uint256 amountIn) internal {
         IPolydexPair pair = IPolydexPair(factory.getPair(wmatic, address(cnt)));
         // Choose WMATIC as input token
-        (uint reserve0, uint reserve1,) = pair.getReserves();
+        (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
         address token0 = pair.token0();
-        (uint reserveIn, uint reserveOut) = token0 == wmatic ? (reserve0, reserve1) : (reserve1, reserve0);
+        (uint256 reserveIn, uint256 reserveOut) =
+            token0 == wmatic ? (reserve0, reserve1) : (reserve1, reserve0);
         // Calculate information required to swap
-        uint amountInWithFee = amountIn.mul(997);
-        uint numerator = amountInWithFee.mul(reserveOut);
-        uint denominator = reserveIn.mul(1000).add(amountInWithFee);
-        uint amountOut = numerator / denominator;
-        (uint amount0Out, uint amount1Out) = token0 == wmatic ? (uint(0), amountOut) : (amountOut, uint(0));
+        uint256 amountInWithFee = amountIn.mul(997);
+        uint256 numerator = amountInWithFee.mul(reserveOut);
+        uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
+        uint256 amountOut = numerator / denominator;
+        (uint256 amount0Out, uint256 amount1Out) =
+            token0 == wmatic
+                ? (uint256(0), amountOut)
+                : (amountOut, uint256(0));
         // Swap WMATIC for CryptionToken
         pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
-        _safeTransfer(address(cnt), coffeeTable, amountOut.mul(stakersAllocation).div(1000));
+        _safeTransfer(
+            address(cnt),
+            coffeeTable,
+            amountOut.mul(stakersAllocation).div(1000)
+        );
         cnt.burn(amountOut.mul(burnAllocation).div(1000));
-        _safeTransfer(address(cnt), platformAddr, amountOut.mul(platformFeesAllocation).div(1000));
-        totalCNTAccumulated+=amountOut;
+        _safeTransfer(
+            address(cnt),
+            platformAddr,
+            amountOut.mul(platformFeesAllocation).div(1000)
+        );
+        totalCNTAccumulated += amountOut;
     }
 
     // Wrapper for safeTransfer
-    function _safeTransfer(address token, address to, uint256 amount) internal {
+    function _safeTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) internal {
         IERC20(token).safeTransfer(to, amount);
     }
 }
