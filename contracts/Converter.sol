@@ -1,23 +1,23 @@
 
-pragma solidity 0.6.12;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./uniswapv2/interfaces/IUniswapV2ERC20.sol";
-import "./uniswapv2/interfaces/IUniswapV2Pair.sol";
-import "./uniswapv2/interfaces/IUniswapV2Factory.sol";
+import "./polydex/interfaces/IPolydexERC20.sol";
+import "./polydex/interfaces/IPolydexPair.sol";
+import "./polydex/interfaces/IPolydexFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import './CryptionNetworkToken.sol';
 
-// CoffeeGrinder is MasterChef's left hand and kinda a wizard. He can create up CNT from pretty much anything!
-// This contract handles "serving up" rewards for xCNT holders by trading tokens collected from fees for CNT.
+// Converter is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
+// This contract handles "serving up" rewards for xCNT holders & also burning some by trading tokens collected from fees for CNT.
 
-contract CoffeeGrinder is Ownable {
+contract Converter is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IUniswapV2Factory public factory;
+    IPolydexFactory public factory;
     address public coffeeTable;
     // The CNT TOKEN!
     CryptionNetworkToken public cnt;
@@ -30,14 +30,14 @@ contract CoffeeGrinder is Ownable {
         
     event CNTAccumulated(uint256 stakersAllocated,uint256 burnt,uint256 platformFees);
     
-    constructor(IUniswapV2Factory _factory,
+    constructor(IPolydexFactory _factory,
                 address _coffeeTable,
                 CryptionNetworkToken _cnt,
                 address _wmatic,
                 uint16 _burnAllocation,
                 uint16 _stakersAllocation,
                 uint16 _platformFeesAllocation,
-                address _platformAddr) public {
+                address _platformAddr) {
         factory = _factory;
         cnt = _cnt;
         coffeeTable = _coffeeTable;
@@ -64,7 +64,7 @@ contract CoffeeGrinder is Ownable {
     function convert(address token0, address token1) public {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
-        IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(token0, token1));
+        IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
         pair.transfer(address(pair), pair.balanceOf(address(this)));
         pair.burn(address(this));
         // First we convert everything to WMATIC
@@ -95,7 +95,7 @@ contract CoffeeGrinder is Ownable {
             return amount;
         }
         // If the target pair doesn't exist, don't convert anything
-        IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(token, wmatic));
+        IPolydexPair pair = IPolydexPair(factory.getPair(token, wmatic));
         if (address(pair) == address(0)) {
             return 0;
         }
@@ -118,7 +118,7 @@ contract CoffeeGrinder is Ownable {
     
     // Converts WMATIC to CryptionToken
     function _toCNT(uint256 amountIn) internal {
-        IUniswapV2Pair pair = IUniswapV2Pair(factory.getPair(wmatic, address(cnt)));
+        IPolydexPair pair = IPolydexPair(factory.getPair(wmatic, address(cnt)));
         // Choose WMATIC as input token
         (uint reserve0, uint reserve1,) = pair.getReserves();
         address token0 = pair.token0();
