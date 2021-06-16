@@ -229,11 +229,11 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
         updatePool();
-        payOrLockupPendingReward(_user,_user);
+        payOrLockupPendingReward(_user, _user);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
-        if(_amount > 0){
+        if (_amount > 0) {
             farmInfo.inputToken.safeTransferFrom(
                 address(_msgSender()),
                 address(this),
@@ -250,7 +250,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total withdrawable amount
      */
     function withdraw(uint256 _amount) public {
-        _withdraw(_amount, _msgSender() , _msgSender());
+        _withdraw(_amount, _msgSender(), _msgSender());
     }
 
     function withdrawFor(uint256 _amount, address _user) public {
@@ -259,22 +259,27 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.whiteListedHandlers[_msgSender()],
             "Handler not whitelisted to withdraw"
         );
-        _withdraw(_amount, _user , _msgSender());
+        _withdraw(_amount, _user, _msgSender());
     }
 
-    function _withdraw(uint256 _amount, address _user , address _withdrawer) internal {
+    function _withdraw(
+        uint256 _amount,
+        address _user,
+        address _withdrawer
+    ) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
         updatePool();
-        payOrLockupPendingReward(_user,_withdrawer);
+        payOrLockupPendingReward(_user, _withdrawer);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
 
-        if(_amount > 0){
+        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee = _amount.mul(farmInfo.withdrawalFeeBP).div(10000);
+                uint256 withdrawalFee =
+                    _amount.mul(farmInfo.withdrawalFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
@@ -321,7 +326,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(address _user , address _withdrawer) internal {
+    function payOrLockupPendingReward(address _user, address _withdrawer)
+        internal
+    {
         UserInfo storage user = userInfo[_user];
 
         if (user.nextHarvestUntil == 0) {

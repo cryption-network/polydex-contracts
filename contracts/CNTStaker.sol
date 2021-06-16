@@ -5,12 +5,17 @@ pragma solidity ^0.7.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import './libraries/NativeMetaTransaction.sol';
-import './libraries/ContextMixin.sol';
+import "./libraries/NativeMetaTransaction.sol";
+import "./libraries/ContextMixin.sol";
+
 // CNTStaker is the coolest staker in defi space. You come in with some CNT, and leave with more! The longer you stay, the more CNT you get.
 
 // This contract handles swapping to and from xCNT, PolyDEX's staking token.
-contract CNTStaker is ERC20("CNTStaker", "xCNT") , ContextMixin , NativeMetaTransaction {
+contract CNTStaker is
+    ERC20("CNTStaker", "xCNT"),
+    ContextMixin,
+    NativeMetaTransaction
+{
     using SafeMath for uint256;
     IERC20 public cnt;
 

@@ -1,4 +1,3 @@
-
 pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -27,17 +26,23 @@ contract Converter is Ownable {
     uint16 public platformFeesAllocation;
     address public platformAddr;
     uint256 private totalCNTAccumulated;
-        
-    event CNTAccumulated(uint256 stakersAllocated,uint256 burnt,uint256 platformFees);
-    
-    constructor(IPolydexFactory _factory,
-                address _coffeeTable,
-                CryptionNetworkToken _cnt,
-                address _wmatic,
-                uint16 _burnAllocation,
-                uint16 _stakersAllocation,
-                uint16 _platformFeesAllocation,
-                address _platformAddr) {
+
+    event CNTAccumulated(
+        uint256 stakersAllocated,
+        uint256 burnt,
+        uint256 platformFees
+    );
+
+    constructor(
+        IPolydexFactory _factory,
+        address _coffeeTable,
+        CryptionNetworkToken _cnt,
+        address _wmatic,
+        uint16 _burnAllocation,
+        uint16 _stakersAllocation,
+        uint16 _platformFeesAllocation,
+        address _platformAddr
+    ) {
         factory = _factory;
         cnt = _cnt;
         coffeeTable = _coffeeTable;
