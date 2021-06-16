@@ -271,15 +271,6 @@ describe("MasterChef", function () {
 
       await advanceTime(300);
 
-      this.canharvest = await this.chef.canHarvest("0", this.bob.address);
-      console.log(this.canharvest.toString());
-
-      this.harvestuntil = await this.chef.getHarvestUntil(
-        "0",
-        this.bob.address
-      );
-      console.log(this.harvestuntil.toString());
-
       await this.chef.connect(this.bob).withdraw(0, "90"); // block 104
       expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000");
 
@@ -289,9 +280,10 @@ describe("MasterChef", function () {
       // 1000 - 100 + 10 + 90
 
       await this.chef.connect(this.bob).deposit(0, "100"); // 105 - 4 block rewards
-      await advanceBlockTo(this.blocknumber + 106);
+
+      await this.chef.connect(this.bob).deposit(0, "0");
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3999");
-      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
+      expect(await this.chef.totalLockedUpRewards()).to.equal("1000");
     });
   });
 });
