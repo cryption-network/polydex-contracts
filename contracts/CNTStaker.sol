@@ -1,27 +1,22 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./libraries/NativeMetaTransaction.sol";
-import "./libraries/ContextMixin.sol";
+import './libraries/NativeMetaTransaction.sol';
+import './libraries/ContextMixin.sol';
+// CNTStaker is the coolest staker in defi space. You come in with some CNT, and leave with more! The longer you stay, the more CNT you get.
 
-// CoffeeTable is the coolest bar in town. You come in with some CNT, and leave with more! The longer you stay, the more CNT you get.
-//
-// This contract handles swapping to and from xCNT, SwapCafe's staking token.
-contract CoffeeTable is
-    ERC20("CoffeeTable", "xCNT"),
-    ContextMixin,
-    NativeMetaTransaction
-{
+// This contract handles swapping to and from xCNT, PolyDEX's staking token.
+contract CNTStaker is ERC20("CNTStaker", "xCNT") , ContextMixin , NativeMetaTransaction {
     using SafeMath for uint256;
     IERC20 public cnt;
 
     // Define the CNT token contract
-    constructor(IERC20 _cnt) public {
-        _initializeEIP712("CoffeeTable");
+    constructor(IERC20 _cnt) {
+        _initializeEIP712("CNTStaker");
         cnt = _cnt;
     }
 
