@@ -166,7 +166,7 @@ describe("MasterChef", function () {
       // carol ka balance of lp == 100 + 900
       expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000");
       // cnt pending == 3000
-      expect(await this.CNT.balanceOf(this.carol.address)).to.equal("2000");
+      expect(await this.CNT.balanceOf(this.carol.address)).to.equal("3000");
 
       await this.chef
         .connect(this.bob)
