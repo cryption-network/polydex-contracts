@@ -7,7 +7,7 @@ require("@nomiclabs/hardhat-waffle");
 
 const defaultNetwork = "localhost"; // "hardhat" for tests
 const INFURA_API = process.env.INFURAKEY;
-const PRIVATE_KEY = process.env.PRIVATEKEY;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 module.exports = {
   defaultNetwork,
