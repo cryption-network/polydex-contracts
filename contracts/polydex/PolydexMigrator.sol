@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./interfaces/IPolydexPair.sol";
 import "./interfaces/IPolydexRouter.sol";
-import "./interfaces/IUniswapV2Router01.sol";
 import "./interfaces/IPolydexFactory.sol";
 import "./libraries/PolydexLibrary.sol";
 
@@ -14,7 +13,7 @@ import "./libraries/PolydexLibrary.sol";
 contract PolyDexMigrator {
     using SafeERC20 for IERC20;
 
-    IUniswapV2Router01 public oldRouter;
+    IPolydexRouter public oldRouter;
     IPolydexRouter public router;
 
     constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
