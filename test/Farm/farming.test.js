@@ -15,7 +15,7 @@ describe("MasterChef", function () {
     this.dev = this.signers[4];
     this.minter = this.signers[5];
 
-    this.MasterChef = await ethers.getContractFactory("MasterChef");
+    this.MasterChef = await ethers.getContractFactory("Farm");
     this.CryptionNetworkToken = await ethers.getContractFactory(
       "CryptionNetworkToken"
     );

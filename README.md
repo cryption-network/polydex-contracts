@@ -1,18 +1,23 @@
 # PolyDEX
+
 Contract are deployed on Matic Mumbai Testnet(80001)
 
 Feel free to read the code. More details coming soon.
 
 ## Install dependencies
+
 ```
-npm i 
+npm i
 ```
+
 ## compile
+
 ```
 npm run compile
 ```
 
 ## deploy Testnet Mumbai
+
 ```
 npm run deployFactory:test
 
@@ -40,3 +45,33 @@ npm run deployRouter:test
 - ETH - https://explorer-mumbai.maticvigil.com/address/0xf2DEF4fD74149231A45d6D5dDC4e5B38F7584E26
 
 - MasterChef - https://explorer-mumbai.maticvigil.com/address/0xC04c845a10B08A0A17A8be8d7c08E450A3cdDaBd
+
+## test output
+
+```
+  MasterChef
+    ✓ should set correct state variables (527ms)
+    With ERC/LP token added to the field
+      ✓ should allow emergency withdraw (673ms)
+      ✓ is CNT transfering to masterchef (346ms)
+      ✓ should give out CNTs only after farming time (1809ms)
+      ✓ should not distribute CNTs if no one deposit (1262ms)
+      ✓ should distribute CNTs properly for each staker (671ms)
+      ✓ should give proper CNTs allocation to each pool (267ms)
+      ✓ should stop giving bonus CNTs after the bonus period ends (382ms)
+
+  Elastic Farming
+    checking DepsoitFor and withdrawFor functionlity
+      ✓ is CNT transfering to masterchef (52ms)
+      ✓ checking deposit for functionlity (181ms)
+      ✓ whitelisted user should only be able to run withdrawFor (272ms)
+    Harvest Time Lock
+      ✓ reward got unlocked only after harvestInterval (203ms)
+      ✓ pending reward give after harvest interval if use withdraw (263ms)
+
+  StakingPool
+    ✓ should sucessfully withdraw reward (125ms)
+    ✓ should sucessfully withdraw reward when 2 reward tokens are present (305ms)
+    ✓ should lock up rewards (68ms)
+    ✓ should whiltelist user to withdraw (146ms)
+```
