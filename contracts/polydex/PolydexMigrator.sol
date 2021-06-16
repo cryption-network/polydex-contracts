@@ -17,7 +17,7 @@ contract PolyDexMigrator {
     IUniswapV2Router01 public oldRouter;
     IPolydexRouter public router;
 
-    constructor(IUniswapV2Router01 _oldRouter, IPolydexRouter _router) public {
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
         oldRouter = _oldRouter;
         router = _router;
     }
@@ -96,7 +96,9 @@ contract PolyDexMigrator {
                 hex'ff',
                 oldRouter.factory(),
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'eb126fcec23a301a6ca69c92882e216c77c0fb35a8bb4a45e82ac47d18d0cc3e' // init code hash
+                // Init code hash. It would be specific each exchange(different for quickswap, dfyn, etc).
+                // So when deploying Migrator, change it.
+                hex'eb126fcec23a301a6ca69c92882e216c77c0fb35a8bb4a45e82ac47d18d0cc3e'
             ))));
     }
 
