@@ -85,7 +85,6 @@ contract Converter is Ownable {
             pair.balanceOf(address(this))
         );
 
-        pair.transfer(address(pair), pair.balanceOf(address(this)));
         pair.burn(address(this));
         // First we convert everything to WMATIC
         uint256 wmaticAmount = _toWMATIC(token0) + _toWMATIC(token1);
