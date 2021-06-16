@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -70,7 +70,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     event RewardLockedUp(address indexed user, uint256 amountLockedUp);
     event RewardTokenAdded(IERC20 _rewardToken);
 
-    constructor(address _feeAddress) public {
+    constructor(address _feeAddress) {
         _initializeEIP712("StakingPool");
         feeAddress = _feeAddress;
     }
@@ -229,13 +229,13 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
 
     // View function to see if user can harvest cnt's.
     function canHarvest(address _user) public view returns (bool) {
-        UserInfo memory user = userInfo[_user];
+        UserInfo storage user = userInfo[_user];
         return block.timestamp >= user.nextHarvestUntil;
     }
 
     // View function to see if user harvest until time.
     function getHarvestUntil(address _user) public view returns (uint256) {
-        UserInfo memory user = userInfo[_user];
+        UserInfo storage user = userInfo[_user];
         return user.nextHarvestUntil;
     }
 
