@@ -13,10 +13,10 @@
     "test": "hardhat test",
     "deploy-migrator:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_migrator.js",
     "deploy-migrator:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_migrator.js",
-    "deployFactory:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deployFactory.js",
-    "deployRouter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deployRouter.js",
-    "deployFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deployFactory.js",
-    "deployRouter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deployRouter.js"
+    "deployFactory:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployFactory.js",
+    "deployRouter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployRouter.js",
+    "deployFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployFactory.js",
+    "deployRouter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRouter.js"
   },
   "author": "",
   "license": "ISC",
