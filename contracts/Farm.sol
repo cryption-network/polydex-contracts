@@ -381,7 +381,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         _withdraw(_pid, _amount, _msgSender(), _msgSender());
     }
 
-    // Withdraw LP tokens from MasterChef.
+    // Withdraw LP tokens from Farm.
     function withdrawFor(
         uint256 _pid,
         uint256 _amount,
