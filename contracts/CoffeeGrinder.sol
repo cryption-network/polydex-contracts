@@ -17,8 +17,8 @@ contract CoffeeGrinder is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IUniswapV2Factory public factory;
-    address public coffeeTable;
+    IPolydexFactory public factory;
+    address public cntStaker;
     // The CNT TOKEN!
     CryptionNetworkToken public cnt;
     address public wmatic;
@@ -30,8 +30,8 @@ contract CoffeeGrinder is Ownable {
         
     event CNTAccumulated(uint256 stakersAllocated,uint256 burnt,uint256 platformFees);
     
-    constructor(IUniswapV2Factory _factory,
-                address _coffeeTable,
+    constructor(IPolydexFactory _factory,
+                address _cntStaker,
                 CryptionNetworkToken _cnt,
                 address _wmatic,
                 uint16 _burnAllocation,
@@ -40,7 +40,7 @@ contract CoffeeGrinder is Ownable {
                 address _platformAddr) public {
         factory = _factory;
         cnt = _cnt;
-        coffeeTable = _coffeeTable;
+        cntStaker = _cntStaker;
         wmatic = _wmatic;
         burnAllocation = _burnAllocation;
         stakersAllocation = _stakersAllocation;
@@ -56,9 +56,9 @@ contract CoffeeGrinder is Ownable {
         platformFeesAllocation = _platformFeesAllocation;
     }
     
-    function updateCoffeeTable(address _newCoffeeTable) external onlyOwner {
-        require (_newCoffeeTable != address(0), 'Address cant be zero Address');
-        coffeeTable = _newCoffeeTable;
+    function updateCntStaker(address _newCntStaker) external onlyOwner {
+        require (_newCntStaker != address(0), 'Address cant be zero Address');
+        cntStaker = _newCntStaker;
     }
     
     function convert(address token0, address token1) public {
@@ -82,7 +82,7 @@ contract CoffeeGrinder is Ownable {
         // If the passed token is CryptionToken, don't convert anything
         if (token == address(cnt)) {
             uint amount = IERC20(token).balanceOf(address(this)); 
-            _safeTransfer(token, coffeeTable, amount.mul(stakersAllocation).div(1000));
+            _safeTransfer(token, cntStaker, amount.mul(stakersAllocation).div(1000));
             cnt.burn(amount.mul(burnAllocation).div(1000));
             _safeTransfer(token, platformAddr, amount.mul(platformFeesAllocation).div(1000));
             totalCNTAccumulated+=amount ;
@@ -131,7 +131,7 @@ contract CoffeeGrinder is Ownable {
         (uint amount0Out, uint amount1Out) = token0 == wmatic ? (uint(0), amountOut) : (amountOut, uint(0));
         // Swap WMATIC for CryptionToken
         pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
-        _safeTransfer(address(cnt), coffeeTable, amountOut.mul(stakersAllocation).div(1000));
+        _safeTransfer(address(cnt), cntStaker, amountOut.mul(stakersAllocation).div(1000));
         cnt.burn(amountOut.mul(burnAllocation).div(1000));
         _safeTransfer(address(cnt), platformAddr, amountOut.mul(platformFeesAllocation).div(1000));
         totalCNTAccumulated+=amountOut;
