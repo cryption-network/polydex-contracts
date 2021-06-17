@@ -1,10 +1,10 @@
 {
-  "name": "swapcafe-contracts",
+  "name": "polydex-contracts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "npm run lint && hardhat compile",
+    "compile": "npx hardhat compile",
     "coverage": "hardhat coverage",
     "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "prepublish": "rimraf build contracts/build artifacts cache",

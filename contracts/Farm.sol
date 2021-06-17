@@ -1,4 +1,4 @@
-pragma solidity 0.6.12;
+pragma solidity ^0.7.0;
 
 import "./CryptionNetworkToken.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -11,14 +11,14 @@ interface IMigratorChef {
     function migrate(IERC20 token) external returns (IERC20);
 }
 
-// MasterChef is the master of CNT. He can make CNT and he is a fair guy.
+// Farm is the major distributor of CNT to the community. He gives juicy CNT rewards as per user's stake.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
 // will be transferred to a governance smart contract once CNT is sufficiently
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
+contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -122,8 +122,8 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         address _feeAddress,
         uint256 _startBlock,
         uint256 _bonusEndBlock
-    ) public {
-        _initializeEIP712("MasterChef");
+    ) {
+        _initializeEIP712("Farm");
         cnt = _cnt;
         cntPerBlock = _cntPerBlock;
         feeAddress = _feeAddress;
@@ -336,25 +336,33 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         );
     }
 
-    // Deposit LP tokens to MasterChef for CNT allocation.
+    // Deposit LP tokens to Farm for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
-        _deposit(_pid,_amount ,_msgSender());
+        _deposit(_pid, _amount, _msgSender());
     }
 
-    // Deposit LP tokens to MasterChef for CNT allocation.
-    function depositFor(uint256 _pid, uint256 _amount , address _user) public {
-        _deposit(_pid,_amount ,_user);
+    // Deposit LP tokens to Farm for CNT allocation.
+    function depositFor(
+        uint256 _pid,
+        uint256 _amount,
+        address _user
+    ) public {
+        _deposit(_pid, _amount, _user);
     }
 
-     function _deposit(uint256 _pid, uint256 _amount , address _user) internal {
+    function _deposit(
+        uint256 _pid,
+        uint256 _amount,
+        address _user
+    ) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
         whiteListedHandlers[_user][_user] = true;
-        
+
         updatePool(_pid);
-        payOrLockupPendingcnt(_pid,_user, _user);
-        
+        payOrLockupPendingcnt(_pid, _user, _user);
+
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(
                 address(_msgSender()),
@@ -366,11 +374,11 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         }
         user.rewardDebt = user.amount.mul(pool.accCNTPerShare).div(1e12);
         emit Deposit(_user, _pid, _amount);
-    }    
+    }
 
-    // Withdraw LP tokens from MasterChef.
+    // Withdraw LP tokens from Farm.
     function withdraw(uint256 _pid, uint256 _amount) public {
-        _withdraw(_pid,_amount ,_msgSender(),_msgSender());
+        _withdraw(_pid, _amount, _msgSender(), _msgSender());
     }
 
     // Withdraw LP tokens from MasterChef.
@@ -379,19 +387,25 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
         _withdraw(_pid,_amount ,_user,_msgSender());
     }
 
-    function _withdraw(uint256 _pid, uint256 _amount ,address _user , address _withdrawer) internal{
-       PoolInfo storage pool = poolInfo[_pid];
-       UserInfo storage user = userInfo[_pid][_user];
-       
-       require(user.amount >= _amount, "withdraw: not good");
-       
-       updatePool(_pid);
-       payOrLockupPendingcnt(_pid,_user,_withdrawer);  
-      
-       if (_amount > 0) {
+    function _withdraw(
+        uint256 _pid,
+        uint256 _amount,
+        address _user,
+        address _withdrawer
+    ) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+
+        require(user.amount >= _amount, "withdraw: not good");
+
+        updatePool(_pid);
+        payOrLockupPendingcnt(_pid, _user, _withdrawer);
+
+        if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (pool.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee = _amount.mul(pool.withdrawalFeeBP).div(10000);
+                uint256 withdrawalFee =
+                    _amount.mul(pool.withdrawalFeeBP).div(10000);
                 pool.lpToken.safeTransfer(feeAddress, withdrawalFee);
                 pool.lpToken.safeTransfer(
                     address(_withdrawer),
@@ -420,17 +434,25 @@ contract MasterChef is Ownable, ContextMixin, NativeMetaTransaction {
     function addUserToWhiteList(address _user) external {
         whiteListedHandlers[_msgSender()][_user] = true;
     }
-    
+
     function removeUserFromWhiteList(address _user) external {
         whiteListedHandlers[_msgSender()][_user] = false;
     }
-    
-    function isUserWhiteListed(address _owner , address _user) external view returns(bool) {
-        return  whiteListedHandlers[_owner][_user];
+
+    function isUserWhiteListed(address _owner, address _user)
+        external
+        view
+        returns (bool)
+    {
+        return whiteListedHandlers[_owner][_user];
     }
 
     // Pay or lockup pending cnt.
-    function payOrLockupPendingcnt(uint256 _pid,address _user,address _withdrawer) internal {
+    function payOrLockupPendingcnt(
+        uint256 _pid,
+        address _user,
+        address _withdrawer
+    ) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
 
