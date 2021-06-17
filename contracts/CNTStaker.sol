@@ -54,8 +54,8 @@ contract CNTStaker is
         cnt.transferFrom(_msgSender(), address(this), _amount);
     }
 
-    // Leave the bar. Claim back your CNTs.
-    // Unclocks the staked + gained CNT and burns xCNT
+    // Leave the staker. Claim back your CNTs.
+    // Unlocks the staked + gained CNT and burns xCNT
     function leave(uint256 _share) public {
         // Gets the amount of xCNT in existence
         uint256 totalShares = totalSupply();
