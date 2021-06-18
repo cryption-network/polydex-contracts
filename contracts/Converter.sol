@@ -21,6 +21,7 @@ contract Converter is Ownable {
     // The CNT TOKEN!
     CryptionNetworkToken public cnt;
     address public wmatic;
+    address public l2Burner;
     uint16 public burnAllocation;
     uint16 public stakersAllocation;
     uint16 public platformFeesAllocation;
@@ -37,6 +38,7 @@ contract Converter is Ownable {
         IPolydexFactory _factory,
         address _coffeeTable,
         CryptionNetworkToken _cnt,
+        address _l2Burner,
         address _wmatic,
         uint16 _burnAllocation,
         uint16 _stakersAllocation,
@@ -46,9 +48,15 @@ contract Converter is Ownable {
         factory = _factory;
         cnt = _cnt;
         coffeeTable = _coffeeTable;
+        l2Burner = _l2Burner;
         wmatic = _wmatic;
         platformAddr = _platformAddr;
         setAllocation(_burnAllocation, _stakersAllocation, _platformFeesAllocation);
+    }
+
+    function updateL2Burner(address _l2Burner) external onlyOwner{
+        require(_l2Burner != address(0), 'No zero address');
+        l2Burner = _l2Burner;
     }
 
     // Set the allocation to handle accumulated swap fees
@@ -56,7 +64,7 @@ contract Converter is Ownable {
         uint16 _burnAllocation,
         uint16 _stakersAllocation,
         uint16 _platformFeesAllocation
-    ) external onlyOwner {
+    ) public onlyOwner {
         require(
             _burnAllocation + _stakersAllocation + _platformFeesAllocation ==
                 1000,
@@ -106,7 +114,7 @@ contract Converter is Ownable {
                 coffeeTable,
                 amount.mul(stakersAllocation).div(1000)
             );
-            cnt.burn(amount.mul(burnAllocation).div(1000));
+            _safeTransfer(token, l2Burner, amount.mul(burnAllocation).div(1000));
             _safeTransfer(
                 token,
                 platformAddr,
@@ -174,7 +182,7 @@ contract Converter is Ownable {
             coffeeTable,
             amountOut.mul(stakersAllocation).div(1000)
         );
-        cnt.burn(amountOut.mul(burnAllocation).div(1000));
+        _safeTransfer(address(cnt), l2Burner, amountOut.mul(burnAllocation).div(1000));
         _safeTransfer(
             address(cnt),
             platformAddr,
