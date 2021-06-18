@@ -1,5 +1,6 @@
 require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
+require("solidity-coverage");
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
