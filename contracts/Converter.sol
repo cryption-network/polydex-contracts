@@ -47,10 +47,8 @@ contract Converter is Ownable {
         cnt = _cnt;
         coffeeTable = _coffeeTable;
         wmatic = _wmatic;
-        burnAllocation = _burnAllocation;
-        stakersAllocation = _stakersAllocation;
-        platformFeesAllocation = _platformFeesAllocation;
         platformAddr = _platformAddr;
+        setAllocation(_burnAllocation, _stakersAllocation, _platformFeesAllocation);
     }
 
     // Set the allocation to handle accumulated swap fees
