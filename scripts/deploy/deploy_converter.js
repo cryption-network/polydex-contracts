@@ -22,6 +22,7 @@ async function main() {
     Addresses.POLYDEX_FACTORY,
     Addresses.CNT_STAKER,
     Addresses.CNT_TOKEN,
+    Addresses.L2Burner,
     Addresses.WMATIC,
     Addresses.BURN_ALLOCATION,
     Addresses.STAKERS_ALLOCATION,
