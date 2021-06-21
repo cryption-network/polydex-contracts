@@ -17,7 +17,7 @@ contract Converter is Ownable {
     using SafeERC20 for IERC20;
 
     IPolydexFactory public factory;
-    address public coffeeTable;
+    address public cntStaker;
     // The CNT TOKEN!
     CryptionNetworkToken public cnt;
     address public wmatic;
@@ -36,7 +36,7 @@ contract Converter is Ownable {
 
     constructor(
         IPolydexFactory _factory,
-        address _coffeeTable,
+        address _cntStaker,
         CryptionNetworkToken _cnt,
         address _l2Burner,
         address _wmatic,
@@ -47,7 +47,7 @@ contract Converter is Ownable {
     ) {
         factory = _factory;
         cnt = _cnt;
-        coffeeTable = _coffeeTable;
+        cntStaker = _cntStaker;
         l2Burner = _l2Burner;
         wmatic = _wmatic;
         platformAddr = _platformAddr;
@@ -75,9 +75,9 @@ contract Converter is Ownable {
         platformFeesAllocation = _platformFeesAllocation;
     }
 
-    function updateCoffeeTable(address _newCoffeeTable) external onlyOwner {
-        require(_newCoffeeTable != address(0), "Address cant be zero Address");
-        coffeeTable = _newCoffeeTable;
+    function updateCntStaker(address _newCntStaker) external onlyOwner {
+        require(_newCntStaker != address(0), "Address cant be zero Address");
+        cntStaker = _newCntStaker;
     }
 
     function convert(address token0, address token1) public {
@@ -111,7 +111,7 @@ contract Converter is Ownable {
             uint256 amount = IERC20(token).balanceOf(address(this));
             _safeTransfer(
                 token,
-                coffeeTable,
+                cntStaker,
                 amount.mul(stakersAllocation).div(1000)
             );
             _safeTransfer(token, l2Burner, amount.mul(burnAllocation).div(1000));
@@ -179,7 +179,7 @@ contract Converter is Ownable {
         pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
         _safeTransfer(
             address(cnt),
-            coffeeTable,
+            cntStaker,
             amountOut.mul(stakersAllocation).div(1000)
         );
         _safeTransfer(address(cnt), l2Burner, amountOut.mul(burnAllocation).div(1000));
