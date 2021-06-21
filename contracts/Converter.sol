@@ -28,7 +28,7 @@ contract Converter is Ownable {
     address public platformAddr;
     uint256 private totalCNTAccumulated;
 
-    event CNTAccumulated(
+    event CNTConverted(
         uint256 stakersAllocated,
         uint256 burnt,
         uint256 platformFees
@@ -96,7 +96,7 @@ contract Converter is Ownable {
         uint256 wmaticAmount = _toWMATIC(token0) + _toWMATIC(token1);
         // Then we convert the WMATIC to CryptionToken
         _toCNT(wmaticAmount);
-        emit CNTAccumulated(
+        emit CNTConverted(
             totalCNTAccumulated.mul(stakersAllocation).div(1000),
             totalCNTAccumulated.mul(burnAllocation).div(1000),
             totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
