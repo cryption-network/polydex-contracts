@@ -387,7 +387,10 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 _amount,
         address _user
     ) public {
-        require(whiteListedHandlers[_user][_msgSender()]);
+        require(
+            whiteListedHandlers[_user][_msgSender()],
+            "not whitelisted"
+        );
         _withdraw(_pid, _amount, _user, _msgSender());
     }
 
