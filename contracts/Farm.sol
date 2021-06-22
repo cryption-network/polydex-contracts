@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
+import "./polydex/interfaces/IPolydexPair.sol";
 
 // import "@nomiclabs/buidler/console.sol";
 interface IMigratorChef {
@@ -334,6 +335,20 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
             lpSupply,
             pool.accCNTPerShare
         );
+    }
+
+    function depositWithPermit(uint256 _pid, uint256 _amount, uint deadline, uint8 v, bytes32 r, bytes32 s) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint value = uint(-1);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, deadline, v, r, s);
+        _deposit(_pid,_amount ,_msgSender());
+    }
+
+    function depositForWithPermit(uint256 _pid, uint256 _amount, address _user, uint deadline, uint8 v, bytes32 r, bytes32 s) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint value = uint(-1);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, deadline, v, r, s);
+        _deposit(_pid,_amount ,_user);
     }
 
     // Deposit LP tokens to Farm for CNT allocation.
