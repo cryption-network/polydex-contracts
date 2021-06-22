@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "bignumber.js": "^9.0.1",
     "chalk": "^4.1.1",
     "dotenv": "^8.2.0"
   }
