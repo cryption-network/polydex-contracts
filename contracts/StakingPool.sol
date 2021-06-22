@@ -125,9 +125,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         rewardPool.push(
             RewardInfo({
                 rewardToken: _rewardToken,
-                lastRewardBlock: block.number > _startBlock
-                    ? block.number
-                    : _startBlock,
+                lastRewardBlock: lastRewardBlock,
                 blockReward: _blockReward,
                 accRewardPerShare: 0
             })
@@ -256,9 +254,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             lpSupply = farmInfo.inputToken.balanceOf(address(this));
         }
         if (lpSupply == 0) {
-            rewardInfo.lastRewardBlock = block.number < farmInfo.endBlock
-                ? block.number
-                : farmInfo.endBlock;
+            rewardInfo.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier =
