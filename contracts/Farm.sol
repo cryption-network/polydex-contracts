@@ -337,17 +337,17 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         );
     }
 
-    function depositWithPermit(uint256 _pid, uint256 _amount, uint deadline, uint8 v, bytes32 r, bytes32 s) public {
+    function depositWithPermit(uint256 _pid, uint256 _amount, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
         PoolInfo storage pool = poolInfo[_pid];
         uint value = uint(-1);
-        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, deadline, v, r, s);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
         _deposit(_pid,_amount ,_msgSender());
     }
 
-    function depositForWithPermit(uint256 _pid, uint256 _amount, address _user, uint deadline, uint8 v, bytes32 r, bytes32 s) public {
+    function depositForWithPermit(uint256 _pid, uint256 _amount, address _user, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
         PoolInfo storage pool = poolInfo[_pid];
         uint value = uint(-1);
-        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, deadline, v, r, s);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
         _deposit(_pid,_amount ,_user);
     }
 
