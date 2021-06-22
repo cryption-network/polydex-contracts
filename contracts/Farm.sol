@@ -486,7 +486,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     function withdrawCNT(uint256 _amount) external onlyOwner{
-        cnt.transfer(_amount,msg.sender);
+        cnt.transfer(msg.sender,_amount);
     }
 
     // Safe cnt transfer function, just in case if rounding error causes pool to not have enough CNTs.
