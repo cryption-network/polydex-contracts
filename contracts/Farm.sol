@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
+import "./polydex/interfaces/IPolydexPair.sol";
 
 // import "@nomiclabs/buidler/console.sol";
 interface IMigratorChef {
@@ -336,6 +337,20 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         );
     }
 
+    function depositWithPermit(uint256 _pid, uint256 _amount, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint value = uint(-1);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+        _deposit(_pid,_amount ,_msgSender());
+    }
+
+    function depositForWithPermit(uint256 _pid, uint256 _amount, address _user, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint value = uint(-1);
+        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+        _deposit(_pid,_amount ,_user);
+    }
+
     // Deposit LP tokens to Farm for CNT allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         _deposit(_pid,_amount ,_msgSender());
@@ -468,6 +483,10 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         feeAddress = _feeAddress;
         emit SetFeeAddress(_msgSender(), _feeAddress);
+    }
+
+    function withdrawCNT(uint256 _amount) external onlyOwner{
+        cnt.transfer(msg.sender,_amount);
     }
 
     // Safe cnt transfer function, just in case if rounding error causes pool to not have enough CNTs.
