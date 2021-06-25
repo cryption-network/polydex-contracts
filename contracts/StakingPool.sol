@@ -223,10 +223,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 tokenReward.mul(1e12).div(lpSupply)
             );
         }
-        console.log('accRewardPerShare  ',accRewardPerShare);
-        console.log('user.rewardDebt[rewardInfo.rewardToken] ',user.rewardDebt[rewardInfo.rewardToken]);
-        console.log('user.amount ',user.amount);
-        console.log('user.amount.mul(accRewardPerShare) ',user.amount.mul(accRewardPerShare));
+
         uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(
             user.rewardDebt[rewardInfo.rewardToken]
         );
@@ -479,7 +476,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         onlyOwner
     {
         RewardInfo storage rewardInfo = rewardPool[_rewardTokenIndex];
-        
+
         rewardInfo.rewardToken.transfer(msg.sender, _amount);
     }
 
