@@ -296,7 +296,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             );
             user.amount = user.amount.add(_amount);
         }
-
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         emit Deposit(_user, _amount);
     }
