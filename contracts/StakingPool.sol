@@ -418,7 +418,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
-
                     // reset lockup
                     totalLockedUpRewards[
                         rewardInfo.rewardToken
@@ -429,7 +428,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                     user.nextHarvestUntil = block.timestamp.add(
                         farmInfo.harvestInterval
                     );
-
                     // send rewards
                     _safeRewardTransfer(
                         _withdrawer,
