@@ -10,6 +10,7 @@ import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
+import "hardhat/console.sol";
 
 contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
@@ -284,6 +285,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
         payOrLockupPendingReward(_user, _user, _amount, true);
+        console.log('yahan aaya kyaa');
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -402,16 +404,22 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             updatePool(i);
 
             uint256 userRewardDebt = user.rewardDebt[rewardInfo.rewardToken];
-            uint256 userRewardLockedUp =
-                user.rewardLockedUp[rewardInfo.rewardToken];
-            uint256 pending =
-                user.amount.mul(rewardInfo.accRewardPerShare).div(1e12).sub(
-                    userRewardDebt
-                );
+            uint256 userRewardLockedUp = user.rewardLockedUp[
+                rewardInfo.rewardToken
+            ];
+            console.log('userRewardDebt : ',userRewardDebt);
+            console.log('rewardInfo.accRewardPerShare : ', rewardInfo.accRewardPerShare);
+            console.log(' sum mul  ', user.amount.mul(rewardInfo.accRewardPerShare).div(1e12));
+            uint256 pending = user
+            .amount
+            .mul(rewardInfo.accRewardPerShare)
+            .div(1e12)
+            .sub(userRewardDebt);
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
-
+                    console.log('totalLockedUpRewards ',totalLockedUpRewards[rewardInfo.rewardToken]);
+                    console.log('userRewardLockedUp ',userRewardLockedUp);
                     // reset lockup
                     totalLockedUpRewards[
                         rewardInfo.rewardToken
@@ -422,7 +430,8 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                     user.nextHarvestUntil = block.timestamp.add(
                         farmInfo.harvestInterval
                     );
-
+                    console.log('totalRewards  : ',totalRewards);
+                    console.log('totalRewards  : ',totalRewards);
                     // send rewards
                     _safeRewardTransfer(
                         _withdrawer,
