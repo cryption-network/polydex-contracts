@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const {WMATIC, POLYDEX_FACTORY} = require("./addresses.json");
+const {WMATIC, POLYDEX_FACTORY} = require("../addresses.json");
 
 async function main() {
   // We get the contract to deploy
