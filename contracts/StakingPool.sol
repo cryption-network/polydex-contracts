@@ -297,6 +297,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             user.amount = user.amount.add(_amount);
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
+        updateRewardDebt(_user);
         emit Deposit(_user, _amount);
     }
 
@@ -345,6 +346,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             }
         }
         totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
+        updateRewardDebt(_user);
         emit Withdraw(_user, _amount);
     }
 
@@ -442,7 +444,14 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                 ] = totalLockedUpRewards[rewardInfo.rewardToken].add(pending);
                 emit RewardLockedUp(_user, pending);
             }
+        }
+    }
 
+    function updateRewardDebt(address _user) internal {
+        UserInfo storage user = userInfo[_user];
+        for (uint256 i = 0; i < rewardPool.length; i++) {
+            RewardInfo storage rewardInfo = rewardPool[i];
+            
             user.rewardDebt[rewardInfo.rewardToken] = user
             .amount
             .mul(rewardInfo.accRewardPerShare)
