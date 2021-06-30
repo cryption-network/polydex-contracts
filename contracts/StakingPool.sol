@@ -10,7 +10,6 @@ import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
-import "hardhat/console.sol";
 
 contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
@@ -286,7 +285,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
         payOrLockupPendingReward(_user, _user, _amount, true);
-        console.log('yahan aaya kyaa');
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -418,8 +416,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
-                    console.log('totalLockedUpRewards ',totalLockedUpRewards[rewardInfo.rewardToken]);
-                    console.log('userRewardLockedUp ',userRewardLockedUp);
                     // reset lockup
                     totalLockedUpRewards[
                         rewardInfo.rewardToken
@@ -430,8 +426,6 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
                     user.nextHarvestUntil = block.timestamp.add(
                         farmInfo.harvestInterval
                     );
-                    console.log('totalRewards  : ',totalRewards);
-                    console.log('totalRewards  : ',totalRewards);
                     // send rewards
                     _safeRewardTransfer(
                         _withdrawer,

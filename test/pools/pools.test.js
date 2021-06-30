@@ -198,16 +198,6 @@ describe("StakingPool", function async() {
 
     const lastRewardBlock = blocksToAdvance.add(100);
 
-    await rewardToken2Instance.connect(owner).approve(stakingPoolInstance.address, initParams.amount);
-
-    // 2nd token added.
-    await stakingPoolInstance.connect(owner).addRewardToken(
-      rewardToken2Instance.address,
-      lastRewardBlock,
-      blockRewardForToken2,
-      "1000000000000000000000",
-    );
-
     expect(balanceOfProxyUserForReward1).to.equal('5200000000000000');
     expect(balanceOfDepositorForReward1).to.equal('0');
 
