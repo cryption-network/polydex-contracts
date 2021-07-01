@@ -10,6 +10,7 @@ import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
+import "./polydex/interfaces/IPolydexPair.sol";
 
 contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     using SafeMath for uint256;
@@ -273,6 +274,19 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @notice deposit LP token function for _msgSender()
      * @param _amount the total deposit amount
      */
+
+    function depositWithPermit(uint256 _amount, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+        uint value = uint(-1);
+        IPolydexPair(address(farmInfo.inputToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+        _deposit(_amount, _msgSender());
+    }
+
+    function depositForWithPermit(uint256 _amount, address _user, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+        uint value = uint(-1);
+        IPolydexPair(address(farmInfo.inputToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+        _deposit(_amount, _user);
+    }
+
     function deposit(uint256 _amount) public {
         _deposit(_amount, _msgSender());
     }
