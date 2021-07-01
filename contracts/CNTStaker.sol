@@ -36,7 +36,7 @@ contract CNTStaker is
 
     // Enter the bar. Pay some CNTs. Earn some shares.
     // Locks CNT and mints xCNT
-    function enter(uint256 _amount) public {
+    function enter(uint256 _amount) external {
         // Gets the amount of CNT locked in the contract
         uint256 totalCNT = cnt.balanceOf(address(this));
         // Gets the amount of xCNT in existence
@@ -51,18 +51,22 @@ contract CNTStaker is
             _mint(_msgSender(), what);
         }
         // Lock the CNT in the contract
-        cnt.transferFrom(_msgSender(), address(this), _amount);
+        require(
+            cnt.transferFrom(_msgSender(), address(this), _amount),
+            "Transfer of CNT failed"
+        );
     }
 
     // Leave the staker. Claim back your CNTs.
     // Unlocks the staked + gained CNT and burns xCNT
-    function leave(uint256 _share) public {
+    function leave(uint256 _share) external {
         // Gets the amount of xCNT in existence
         uint256 totalShares = totalSupply();
         // Calculates the amount of CNT the xCNT is worth
-        uint256 what =
-            _share.mul(cnt.balanceOf(address(this))).div(totalShares);
+        uint256 what = _share.mul(cnt.balanceOf(address(this))).div(
+            totalShares
+        );
         _burn(_msgSender(), _share);
-        cnt.transfer(_msgSender(), what);
+        require(cnt.transfer(_msgSender(), what), "Transfer of CNT failed");
     }
 }

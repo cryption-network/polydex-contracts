@@ -6,13 +6,14 @@ import "./polydex/interfaces/IPolydexERC20.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
 import "./polydex/interfaces/IPolydexFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./CryptionNetworkToken.sol";
 
 // Converter is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
 // This contract handles "serving up" rewards for xCNT holders & also burning some by trading tokens collected from fees for CNT.
 
-contract Converter is Ownable {
+contract Converter is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -51,11 +52,15 @@ contract Converter is Ownable {
         l2Burner = _l2Burner;
         wmatic = _wmatic;
         platformAddr = _platformAddr;
-        setAllocation(_burnAllocation, _stakersAllocation, _platformFeesAllocation);
+        setAllocation(
+            _burnAllocation,
+            _stakersAllocation,
+            _platformFeesAllocation
+        );
     }
 
-    function updateL2Burner(address _l2Burner) external onlyOwner{
-        require(_l2Burner != address(0), 'No zero address');
+    function updateL2Burner(address _l2Burner) external onlyOwner {
+        require(_l2Burner != address(0), "No zero address");
         l2Burner = _l2Burner;
     }
 
@@ -80,10 +85,12 @@ contract Converter is Ownable {
         cntStaker = _newCntStaker;
     }
 
-    function convert(address token0, address token1) public {
+    function convert(address token0, address token1) external nonReentrant() {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
+
+        require(address(pair) != address(0), "Invalid pair");
 
         _safeTransfer(
             address(pair),
@@ -114,7 +121,11 @@ contract Converter is Ownable {
                 cntStaker,
                 amount.mul(stakersAllocation).div(1000)
             );
-            _safeTransfer(token, l2Burner, amount.mul(burnAllocation).div(1000));
+            _safeTransfer(
+                token,
+                l2Burner,
+                amount.mul(burnAllocation).div(1000)
+            );
             _safeTransfer(
                 token,
                 platformAddr,
@@ -137,16 +148,18 @@ contract Converter is Ownable {
         // Choose the correct reserve to swap from
         (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
         address token0 = pair.token0();
-        (uint256 reserveIn, uint256 reserveOut) =
-            token0 == token ? (reserve0, reserve1) : (reserve1, reserve0);
+        (uint256 reserveIn, uint256 reserveOut) = token0 == token
+            ? (reserve0, reserve1)
+            : (reserve1, reserve0);
         // Calculate information required to swap
         uint256 amountIn = IERC20(token).balanceOf(address(this));
         uint256 amountInWithFee = amountIn.mul(997);
         uint256 numerator = amountInWithFee.mul(reserveOut);
         uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
         uint256 amountOut = numerator / denominator;
-        (uint256 amount0Out, uint256 amount1Out) =
-            token0 == token ? (uint256(0), amountOut) : (amountOut, uint256(0));
+        (uint256 amount0Out, uint256 amount1Out) = token0 == token
+            ? (uint256(0), amountOut)
+            : (amountOut, uint256(0));
         // Swap the token for WMATIC
         _safeTransfer(token, address(pair), amountIn);
         pair.swap(
@@ -164,17 +177,17 @@ contract Converter is Ownable {
         // Choose WMATIC as input token
         (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
         address token0 = pair.token0();
-        (uint256 reserveIn, uint256 reserveOut) =
-            token0 == wmatic ? (reserve0, reserve1) : (reserve1, reserve0);
+        (uint256 reserveIn, uint256 reserveOut) = token0 == wmatic
+            ? (reserve0, reserve1)
+            : (reserve1, reserve0);
         // Calculate information required to swap
         uint256 amountInWithFee = amountIn.mul(997);
         uint256 numerator = amountInWithFee.mul(reserveOut);
         uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
         uint256 amountOut = numerator / denominator;
-        (uint256 amount0Out, uint256 amount1Out) =
-            token0 == wmatic
-                ? (uint256(0), amountOut)
-                : (amountOut, uint256(0));
+        (uint256 amount0Out, uint256 amount1Out) = token0 == wmatic
+            ? (uint256(0), amountOut)
+            : (amountOut, uint256(0));
         // Swap WMATIC for CryptionToken
         pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
         _safeTransfer(
@@ -182,7 +195,11 @@ contract Converter is Ownable {
             cntStaker,
             amountOut.mul(stakersAllocation).div(1000)
         );
-        _safeTransfer(address(cnt), l2Burner, amountOut.mul(burnAllocation).div(1000));
+        _safeTransfer(
+            address(cnt),
+            l2Burner,
+            amountOut.mul(burnAllocation).div(1000)
+        );
         _safeTransfer(
             address(cnt),
             platformAddr,

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // import "@nomiclabs/buidler/console.sol";
 interface IMigratorChef {
@@ -19,7 +20,7 @@ interface IMigratorChef {
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
+contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -77,6 +78,9 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
     mapping(address => mapping(address => bool)) public whiteListedHandlers;
+
+    mapping(address => bool) public activeLpTokens;
+
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when CNT mining starts.
@@ -116,6 +120,10 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 indexed pid,
         uint256 amountLockedUp
     );
+    event BonusMultiplierUpdated(uint256 _bonusMultiplier);
+    event BlockRateUpdated(uint256 _blockRate);
+    event UserWhitelisted(address _primaryUser, address _whitelistedUser);
+    event UserBlacklisted(address _primaryUser, address _blacklistedUser);
 
     constructor(
         CryptionNetworkToken _cnt,
@@ -132,6 +140,11 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         bonusEndBlock = _bonusEndBlock;
     }
 
+    modifier validatePoolByPid(uint256 _pid) {
+        require(_pid < poolInfo.length, "Pool does not exist");
+        _;
+    }
+
     function _msgSender()
         internal
         view
@@ -141,12 +154,17 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         return ContextMixin.msgSender();
     }
 
-    function updateBonusMultiplier(uint256 multiplierNumber) public onlyOwner {
+    function updateBonusMultiplier(uint256 multiplierNumber)
+        external
+        onlyOwner
+    {
         BONUS_MULTIPLIER = multiplierNumber;
+        emit BonusMultiplierUpdated(BONUS_MULTIPLIER);
     }
 
     function updateBlockRate(uint256 _cntPerBlock) external onlyOwner {
         cntPerBlock = _cntPerBlock;
+        emit BlockRateUpdated(cntPerBlock);
     }
 
     function poolLength() external view returns (uint256) {
@@ -154,14 +172,13 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(
         uint256 _allocPoint,
         IERC20 _lpToken,
         uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
-    ) public onlyOwner {
+    ) external onlyOwner nonReentrant {
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
@@ -170,11 +187,17 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
             "add: invalid harvest interval"
         );
+        require(
+            activeLpTokens[address(_lpToken)] == false,
+            "Reward Token already added"
+        );
+
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock =
-            block.number > startBlock ? block.number : startBlock;
+        uint256 lastRewardBlock = block.number > startBlock
+            ? block.number
+            : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(
             PoolInfo({
@@ -186,6 +209,8 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
                 harvestInterval: _harvestInterval
             })
         );
+
+        activeLpTokens[address(_lpToken)] = true;
 
         emit PoolAddition(
             poolInfo.length.sub(1),
@@ -203,7 +228,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint16 _withdrawalFeeBP,
         uint256 _harvestInterval,
         bool _withUpdate
-    ) public onlyOwner {
+    ) external onlyOwner validatePoolByPid(_pid) nonReentrant {
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "set: invalid deposit fee basis points"
@@ -227,13 +252,17 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Set the migrator contract. Can only be called by the owner.
-    function setMigrator(IMigratorChef _migrator) public onlyOwner {
+    function setMigrator(IMigratorChef _migrator) external onlyOwner {
         migrator = _migrator;
         emit MigratorUpdated(_migrator);
     }
 
     // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
-    function migrate(uint256 _pid) public {
+    function migrate(uint256 _pid)
+        external
+        validatePoolByPid(_pid)
+        nonReentrant
+    {
         require(address(migrator) != address(0), "migrate: no migrator");
         PoolInfo storage pool = poolInfo[_pid];
         IERC20 lpToken = pool.lpToken;
@@ -259,6 +288,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     function pendingCNT(uint256 _pid, address _user)
         external
         view
+        validatePoolByPid(_pid)
         returns (uint256)
     {
         PoolInfo storage pool = poolInfo[_pid];
@@ -266,18 +296,21 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 accCNTPerShare = pool.accCNTPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier =
-                getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 cntReward =
-                multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(
-                    totalAllocPoint
-                );
+            uint256 multiplier = getMultiplier(
+                pool.lastRewardBlock,
+                block.number
+            );
+            uint256 cntReward = multiplier
+            .mul(cntPerBlock)
+            .mul(pool.allocPoint)
+            .div(totalAllocPoint);
             accCNTPerShare = accCNTPerShare.add(
                 cntReward.mul(1e12).div(lpSupply)
             );
         }
-        uint256 pending =
-            user.amount.mul(accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accCNTPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         return pending.add(user.rewardLockedUp);
     }
 
@@ -285,6 +318,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     function canHarvest(uint256 _pid, address _user)
         public
         view
+        validatePoolByPid(_pid)
         returns (bool)
     {
         UserInfo memory user = userInfo[_pid][_user];
@@ -293,8 +327,9 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
 
     // View function to see if user harvest until time.
     function getHarvestUntil(uint256 _pid, address _user)
-        public
+        external
         view
+        validatePoolByPid(_pid)
         returns (uint256)
     {
         UserInfo memory user = userInfo[_pid][_user];
@@ -310,7 +345,11 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Update reward variables of the given pool to be up-to-date.
-    function updatePool(uint256 _pid) public {
+    function updatePool(uint256 _pid)
+        public
+        validatePoolByPid(_pid)
+        nonReentrant
+    {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
             return;
@@ -321,10 +360,10 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 cntReward =
-            multiplier.mul(cntPerBlock).mul(pool.allocPoint).div(
-                totalAllocPoint
-            );
+        uint256 cntReward = multiplier
+        .mul(cntPerBlock)
+        .mul(pool.allocPoint)
+        .div(totalAllocPoint);
         pool.accCNTPerShare = pool.accCNTPerShare.add(
             cntReward.mul(1e12).div(lpSupply)
         );
@@ -337,22 +376,57 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         );
     }
 
-    function depositWithPermit(uint256 _pid, uint256 _amount, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+    function depositWithPermit(
+        uint256 _pid,
+        uint256 _amount,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public {
         PoolInfo storage pool = poolInfo[_pid];
-        uint value = uint(-1);
-        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
-        _deposit(_pid,_amount ,_msgSender());
+        uint256 value = uint256(-1);
+        IPolydexPair(address(pool.lpToken)).permit(
+            _msgSender(),
+            address(this),
+            value,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
+        _deposit(_pid, _amount, _msgSender());
     }
 
-    function depositForWithPermit(uint256 _pid, uint256 _amount, address _user, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+    function depositForWithPermit(
+        uint256 _pid,
+        uint256 _amount,
+        address _user,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public {
         PoolInfo storage pool = poolInfo[_pid];
-        uint value = uint(-1);
-        IPolydexPair(address(pool.lpToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
-        _deposit(_pid,_amount ,_user);
+        uint256 value = uint256(-1);
+        IPolydexPair(address(pool.lpToken)).permit(
+            _msgSender(),
+            address(this),
+            value,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
+        _deposit(_pid, _amount, _user);
     }
 
     // Deposit LP tokens to Farm for CNT allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount)
+        external
+        validatePoolByPid(_pid)
+        nonReentrant
+    {
         _deposit(_pid, _amount, _msgSender());
     }
 
@@ -361,7 +435,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 _pid,
         uint256 _amount,
         address _user
-    ) public {
+    ) external validatePoolByPid(_pid) nonReentrant {
         _deposit(_pid, _amount, _user);
     }
 
@@ -392,7 +466,11 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Withdraw LP tokens from Farm.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount)
+        external
+        validatePoolByPid(_pid)
+        nonReentrant
+    {
         _withdraw(_pid, _amount, _msgSender(), _msgSender());
     }
 
@@ -401,11 +479,8 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 _pid,
         uint256 _amount,
         address _user
-    ) public {
-        require(
-            whiteListedHandlers[_user][_msgSender()],
-            "user not whitelisted"
-        );
+    ) external validatePoolByPid(_pid) nonReentrant {
+        require(whiteListedHandlers[_user][_msgSender()], "not whitelisted");
         _withdraw(_pid, _amount, _user, _msgSender());
     }
 
@@ -426,8 +501,9 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             if (pool.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee =
-                    _amount.mul(pool.withdrawalFeeBP).div(10000);
+                uint256 withdrawalFee = _amount.mul(pool.withdrawalFeeBP).div(
+                    10000
+                );
                 pool.lpToken.safeTransfer(feeAddress, withdrawalFee);
                 pool.lpToken.safeTransfer(
                     address(_withdrawer),
@@ -442,7 +518,11 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid)
+        external
+        validatePoolByPid(_pid)
+        nonReentrant
+    {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_msgSender()];
         pool.lpToken.safeTransfer(address(_msgSender()), user.amount);
@@ -455,10 +535,12 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
 
     function addUserToWhiteList(address _user) external {
         whiteListedHandlers[_msgSender()][_user] = true;
+        emit UserWhitelisted(_msgSender(), _user);
     }
 
     function removeUserFromWhiteList(address _user) external {
         whiteListedHandlers[_msgSender()][_user] = false;
+        emit UserBlacklisted(_msgSender(), _user);
     }
 
     function isUserWhiteListed(address _owner, address _user)
@@ -482,8 +564,9 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
 
-        uint256 pending =
-            user.amount.mul(pool.accCNTPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accCNTPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         if (canHarvest(_pid, _user)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
@@ -508,14 +591,14 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Update fee address by the previous fee address.
-    function setFeeAddress(address _feeAddress) public onlyOwner {
+    function setFeeAddress(address _feeAddress) external onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         feeAddress = _feeAddress;
         emit SetFeeAddress(_msgSender(), _feeAddress);
     }
 
-    function withdrawCNT(uint256 _amount) external onlyOwner{
-        cnt.transfer(msg.sender,_amount);
+    function withdrawCNT(uint256 _amount) external onlyOwner {
+        cnt.transfer(msg.sender, _amount);
     }
 
     // Safe cnt transfer function, just in case if rounding error causes pool to not have enough CNTs.

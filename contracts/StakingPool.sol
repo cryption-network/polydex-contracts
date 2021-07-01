@@ -11,8 +11,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
+contract StakingPool is
+    Ownable,
+    ContextMixin,
+    NativeMetaTransaction,
+    ReentrancyGuard
+{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -70,6 +76,9 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     event EmergencyWithdraw(address indexed user, uint256 amount);
     event RewardLockedUp(address indexed user, uint256 amountLockedUp);
     event RewardTokenAdded(IERC20 _rewardToken);
+    event UserWhitelisted(address _primaryUser, address _whitelistedUser);
+    event UserBlacklisted(address _primaryUser, address _blacklistedUser);
+    event BlockRewardUpdated(uint256 _blockReward, uint256 _rewardPoolIndex);
 
     constructor(address _feeAddress) {
         _initializeEIP712("StakingPool");
@@ -166,7 +175,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         uint256 _lastRewardBlock,
         uint256 _blockReward,
         uint256 _amount
-    ) public onlyOwner {
+    ) external onlyOwner nonReentrant {
         require(address(_rewardToken) != address(0), "Invalid reward token");
         require(
             activeRewardTokens[address(_rewardToken)] == false,
@@ -238,7 +247,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // View function to see if user harvest until time.
-    function getHarvestUntil(address _user) public view returns (uint256) {
+    function getHarvestUntil(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         return user.nextHarvestUntil;
     }
@@ -246,7 +255,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     /**
      * @notice updates pool information to be up to date to the current block
      */
-    function updatePool(uint256 _rewardInfoIndex) public {
+    function updatePool(uint256 _rewardInfoIndex) public nonReentrant {
         RewardInfo storage rewardInfo = rewardPool[_rewardInfoIndex];
         if (block.number <= rewardInfo.lastRewardBlock) {
             return;
@@ -275,23 +284,52 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @param _amount the total deposit amount
      */
 
-    function depositWithPermit(uint256 _amount, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
-        uint value = uint(-1);
-        IPolydexPair(address(farmInfo.inputToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+    function depositWithPermit(
+        uint256 _amount,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external nonReentrant {
+        uint256 value = uint256(-1);
+        IPolydexPair(address(farmInfo.inputToken)).permit(
+            _msgSender(),
+            address(this),
+            value,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
         _deposit(_amount, _msgSender());
     }
 
-    function depositForWithPermit(uint256 _amount, address _user, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
-        uint value = uint(-1);
-        IPolydexPair(address(farmInfo.inputToken)).permit(_msgSender(), address(this), value, _deadline, _v, _r, _s);
+    function depositForWithPermit(
+        uint256 _amount,
+        address _user,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external nonReentrant {
+        uint256 value = uint256(-1);
+        IPolydexPair(address(farmInfo.inputToken)).permit(
+            _msgSender(),
+            address(this),
+            value,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
         _deposit(_amount, _user);
     }
 
-    function deposit(uint256 _amount) public {
+    function deposit(uint256 _amount) external nonReentrant {
         _deposit(_amount, _msgSender());
     }
 
-    function depositFor(uint256 _amount, address _user) public {
+    function depositFor(uint256 _amount, address _user) external nonReentrant {
         _deposit(_amount, _user);
     }
 
@@ -319,11 +357,11 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
      * @notice withdraw LP token function for _msgSender()
      * @param _amount the total withdrawable amount
      */
-    function withdraw(uint256 _amount) public {
+    function withdraw(uint256 _amount) external nonReentrant {
         _withdraw(_amount, _msgSender(), _msgSender());
     }
 
-    function withdrawFor(uint256 _amount, address _user) public {
+    function withdrawFor(uint256 _amount, address _user) external nonReentrant {
         UserInfo storage user = userInfo[_user];
         require(
             user.whiteListedHandlers[_msgSender()],
@@ -367,7 +405,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     /**
      * @notice emergency function to withdraw LP tokens and forego harvest rewards. Important to protect users LP tokens
      */
-    function emergencyWithdraw() public {
+    function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
         farmInfo.inputToken.safeTransfer(address(_msgSender()), user.amount);
         emit EmergencyWithdraw(_msgSender(), user.amount);
@@ -384,15 +422,17 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     function whitelistHandler(address _handler) external {
         UserInfo storage user = userInfo[_msgSender()];
         user.whiteListedHandlers[_handler] = true;
+        emit UserWhitelisted(_msgSender(), _handler);
     }
 
     function removeWhitelistedHandler(address _handler) external {
         UserInfo storage user = userInfo[_msgSender()];
         user.whiteListedHandlers[_handler] = false;
+        emit UserBlacklisted(_msgSender(), _handler);
     }
 
     function isUserWhiteListed(address _owner, address _user)
-        public
+        external
         view
         returns (bool)
     {
@@ -465,7 +505,7 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
         UserInfo storage user = userInfo[_user];
         for (uint256 i = 0; i < rewardPool.length; i++) {
             RewardInfo storage rewardInfo = rewardPool[i];
-            
+
             user.rewardDebt[rewardInfo.rewardToken] = user
             .amount
             .mul(rewardInfo.accRewardPerShare)
@@ -474,22 +514,23 @@ contract StakingPool is Ownable, ContextMixin, NativeMetaTransaction {
     }
 
     // Update fee address by the previous fee address.
-    function setFeeAddress(address _feeAddress) public onlyOwner {
+    function setFeeAddress(address _feeAddress) external onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         feeAddress = _feeAddress;
     }
 
     // Function to update the end block for owner. To control the distribution duration.
-    function updateEndBlock(uint256 _endBlock) public onlyOwner {
+    function updateEndBlock(uint256 _endBlock) external onlyOwner {
         farmInfo.endBlock = _endBlock;
     }
 
     function updateBlockReward(uint256 _blockReward, uint256 _rewardTokenIndex)
-        public
+        external
         onlyOwner
     {
         updatePool(_rewardTokenIndex);
         rewardPool[_rewardTokenIndex].blockReward = _blockReward;
+        emit BlockRewardUpdated(_blockReward, _rewardTokenIndex);
     }
 
     function transferRewardToken(uint256 _rewardTokenIndex, uint256 _amount)
