@@ -316,6 +316,9 @@ describe("StakingPool", function async() {
     let balanceOfDepositorForReward3 = await rewardToken3Instance.balanceOf(
       depositor1.address
     );
+    expect(balanceOfDepositorForReward1Withdraw2).to.equal(
+      expectedReward1Balance
+    );
 
     expect(balanceOfDepositorForReward1Withdraw2).to.equal(
       expectedReward1Balance
