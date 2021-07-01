@@ -1,15 +1,29 @@
 {
-  "name": "swapcafe-contracts",
+  "name": "polydex-contracts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "npm run lint && hardhat compile",
+    "compile": "npx hardhat compile",
     "coverage": "hardhat coverage",
     "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "prepublish": "rimraf build contracts/build artifacts cache",
     "prepare": "env COMPILE_MODE=production npm run compile",
-    "test": "hardhat test"
+    "deploy": "npx hardhat run scripts/deploymentScript.js --network matic",
+    "test": "hardhat test",
+    "deploy-migrator:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_migrator.js",
+    "deploy-migrator:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_migrator.js",
+    "deployFactory:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployFactory.js",
+    "deployRouter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployRouter.js",
+    "deployFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployFactory.js",
+    "deployRouter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRouter.js",
+    "deployFarm:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_farm.js",
+    "deployCNTStaker:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_cnt_staker.js",
+    "deployCNTStaker:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_cnt_staker.js",
+    "deployConverter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_converter.js",
+    "deployConverter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_converter.js",
+    "deployStakingPool:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_staking_pool.js",
+    "deployStakingPool:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_staking_pool.js"
   },
   "author": "",
   "license": "ISC",
@@ -25,6 +39,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "bignumber.js": "^9.0.1",
     "chalk": "^4.1.1",
     "dotenv": "^8.2.0"
   }
