@@ -348,7 +348,6 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     function updatePool(uint256 _pid)
         public
         validatePoolByPid(_pid)
-        nonReentrant
     {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
