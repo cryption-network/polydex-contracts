@@ -255,7 +255,7 @@ contract StakingPool is
     /**
      * @notice updates pool information to be up to date to the current block
      */
-    function updatePool(uint256 _rewardInfoIndex) public nonReentrant {
+    function updatePool(uint256 _rewardInfoIndex) public {
         RewardInfo storage rewardInfo = rewardPool[_rewardInfoIndex];
         if (block.number <= rewardInfo.lastRewardBlock) {
             return;
@@ -412,6 +412,7 @@ contract StakingPool is
         if (user.amount > 0) {
             farmInfo.numFarmers--;
         }
+        totalInputTokensStaked = totalInputTokensStaked.sub(user.amount);
         user.amount = 0;
 
         for (uint256 i = 0; i < rewardPool.length; i++) {
