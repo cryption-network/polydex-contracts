@@ -216,4 +216,10 @@ contract Converter is Ownable, ReentrancyGuard {
     ) internal {
         IERC20(token).safeTransfer(to, amount);
     }
+
+    function rescueFunds(address token) external onlyOwner {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(balance > 0, "Insufficient token balance");
+        IERC20(token).safeTransfer(owner(), balance);
+    }
 }
