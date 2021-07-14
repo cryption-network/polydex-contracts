@@ -8,6 +8,7 @@ import "./interfaces/IPolydexPair.sol";
 import "./interfaces/IPolydexRouter.sol";
 import "./interfaces/IPolydexFactory.sol";
 import "./libraries/PolydexLibrary.sol";
+import "./interfaces/IFarm.sol";
 
 // Migrator helps you migrate your existing LP tokens to Polydex LP ones
 contract PolyDexMigrator {
@@ -15,10 +16,13 @@ contract PolyDexMigrator {
 
     IPolydexRouter public oldRouter;
     IPolydexRouter public router;
+    IFarm public Farm;
 
-    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
+
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router,IFarm _Farm) public {
         oldRouter = _oldRouter;
         router = _router;
+        Farm = _Farm;
     }
 
     function migrateWithPermit(
@@ -113,6 +117,23 @@ contract PolyDexMigrator {
         IERC20(tokenB).safeTransfer(pair, amountB);
         IPolydexPair(pair).mint(msg.sender);
     }
+
+    function addLiquidityWithDeposit(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 pid
+    ) internal returns (uint amountA, uint amountB) {
+        (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired);
+        address pair = PolydexLibrary.pairFor(router.factory(), tokenA, tokenB);
+        IERC20(tokenA).safeTransfer(pair, amountA);
+        IERC20(tokenB).safeTransfer(pair, amountB);
+        uint256 liquidity = IPolydexPair(pair).mint(address(this));
+        IPolydexPair(pair).approve(address(Farm),liquidity);
+        Farm.depositFor(pid, liquidity, msg.sender);
+    }
+
 
     function _addLiquidity(
         address tokenA,
