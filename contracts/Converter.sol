@@ -91,6 +91,9 @@ contract Converter is Ownable, ReentrancyGuard {
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
 
         require(address(pair) != address(0), "Invalid pair");
+        IPolydexPair wmatic_pair0 = IPolydexPair(factory.getPair(token0, wmatic));
+        IPolydexPair wmatic_pair1 = IPolydexPair(factory.getPair(token1, wmatic));
+        require(address(wmatic_pair0) != address(0) && address(wmatic_pair1) == address(0),"Cannot be converted");
 
         _safeTransfer(
             address(pair),
