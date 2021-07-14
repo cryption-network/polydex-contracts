@@ -75,6 +75,39 @@ contract PolyDexMigrator {
         }
     }
 
+    function migrateWithDeposit(
+        address tokenA,
+        address tokenB,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        uint256 deadline,
+        uint256 pid
+    ) public {
+        require(deadline >= block.timestamp, 'Swap: EXPIRED');
+
+        // Remove liquidity from the old router with permit
+        (uint256 amountA, uint256 amountB) = removeLiquidity(
+            tokenA,
+            tokenB,
+            liquidity,
+            amountAMin,
+            amountBMin,
+            deadline
+        );
+
+        // Add liquidity to the new router with depsoit in Farm 
+        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidityWithDeposit(tokenA, tokenB, amountA, amountB,pid);
+
+        // Send remaining tokens to msg.sender
+        if (amountA > pooledAmountA) {
+            IERC20(tokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
+        }
+        if (amountB > pooledAmountB) {
+            IERC20(tokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
+        }
+    }
+
     function removeLiquidity(
         address tokenA,
         address tokenB,
