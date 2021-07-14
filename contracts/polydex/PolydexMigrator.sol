@@ -9,6 +9,7 @@ import "./interfaces/IPolydexRouter.sol";
 import "./interfaces/IPolydexFactory.sol";
 import "./libraries/PolydexLibrary.sol";
 import "./interfaces/IFarm.sol";
+import "./interfaces/IStakingPool.sol";
 
 // Migrator helps you migrate your existing LP tokens to Polydex LP ones
 contract PolyDexMigrator {
@@ -16,13 +17,11 @@ contract PolyDexMigrator {
 
     IPolydexRouter public oldRouter;
     IPolydexRouter public router;
-    IFarm public Farm;
 
 
-    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router,IFarm _Farm) public {
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
         oldRouter = _oldRouter;
         router = _router;
-        Farm = _Farm;
     }
 
     function migrateWithPermit(
@@ -82,6 +81,7 @@ contract PolyDexMigrator {
         uint256 amountAMin,
         uint256 amountBMin,
         uint256 deadline,
+        address _Farm,
         uint256 pid
     ) public {
         require(deadline >= block.timestamp, 'Swap: EXPIRED');
@@ -97,7 +97,7 @@ contract PolyDexMigrator {
         );
 
         // Add liquidity to the new router with depsoit in Farm 
-        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidityWithDeposit(tokenA, tokenB, amountA, amountB,pid);
+        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidityWithDeposit(tokenA, tokenB, amountA, amountB, pid, _Farm);
 
         // Send remaining tokens to msg.sender
         if (amountA > pooledAmountA) {
@@ -156,15 +156,20 @@ contract PolyDexMigrator {
         address tokenB,
         uint256 amountADesired,
         uint256 amountBDesired,
-        uint256 pid
+        uint256 pid,
+        address _Farm
     ) internal returns (uint amountA, uint amountB) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired);
         address pair = PolydexLibrary.pairFor(router.factory(), tokenA, tokenB);
         IERC20(tokenA).safeTransfer(pair, amountA);
         IERC20(tokenB).safeTransfer(pair, amountB);
         uint256 liquidity = IPolydexPair(pair).mint(address(this));
-        IPolydexPair(pair).approve(address(Farm),liquidity);
-        Farm.depositFor(pid, liquidity, msg.sender);
+        IPolydexPair(pair).approve(_Farm,liquidity);
+        if(pid == uint256(-1)){
+            IStakingPool(_Farm).depositFor(liquidity, msg.sender);
+        }else{
+            IFarm(_Farm).depositFor(pid, liquidity, msg.sender);
+        }
     }
 
 
