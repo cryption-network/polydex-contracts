@@ -71,6 +71,8 @@ contract StakingPool is
 
     RewardInfo[] public rewardPool;
 
+    bool public isInitiated;
+
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
@@ -108,6 +110,9 @@ contract StakingPool is
         uint16 _withdrawalFeeBP,
         uint256 _harvestInterval
     ) external onlyOwner {
+
+        require(!isInitiated, "Staking pool is already initiated");
+
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
@@ -116,6 +121,8 @@ contract StakingPool is
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
             "add: invalid harvest interval"
         );
+
+        isInitiated = true;
 
         TransferHelper.safeTransferFrom(
             address(_rewardToken),
@@ -336,7 +343,7 @@ contract StakingPool is
     function _deposit(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
-        payOrLockupPendingReward(_user, _user, _amount, true);
+        payOrLockupPendingReward(_user, _user, _amount);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -377,7 +384,7 @@ contract StakingPool is
     ) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
-        payOrLockupPendingReward(_user, _withdrawer, _amount, false);
+        payOrLockupPendingReward(_user, _withdrawer, _amount);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -444,8 +451,7 @@ contract StakingPool is
     function payOrLockupPendingReward(
         address _user,
         address _withdrawer,
-        uint256 _amount,
-        bool _isOperationAdd
+        uint256 _amount
     ) internal {
         UserInfo storage user = userInfo[_user];
         if (user.nextHarvestUntil == 0) {
@@ -540,7 +546,16 @@ contract StakingPool is
     {
         RewardInfo storage rewardInfo = rewardPool[_rewardTokenIndex];
 
-        rewardInfo.rewardToken.transfer(msg.sender, _amount);
+        _safeTransfer(address(rewardInfo.rewardToken), msg.sender, _amount);
+    }
+
+    // Wrapper for safeTransfer
+    function _safeTransfer(
+        address token,
+        address to,
+        uint256 amount
+    ) internal {
+        IERC20(token).safeTransfer(to, amount);
     }
 
     /**
@@ -555,9 +570,9 @@ contract StakingPool is
     ) private {
         uint256 rewardBal = _rewardToken.balanceOf(address(this));
         if (_amount > rewardBal) {
-            _rewardToken.transfer(_to, rewardBal);
+            _safeTransfer(address(_rewardToken), _to, rewardBal);
         } else {
-            _rewardToken.transfer(_to, _amount);
+            _safeTransfer(address(_rewardToken), _to, _amount);
         }
     }
 }

@@ -233,6 +233,10 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "set: invalid deposit fee basis points"
         );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
