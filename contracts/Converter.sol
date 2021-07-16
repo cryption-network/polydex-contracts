@@ -140,11 +140,10 @@ contract Converter is Ownable, ReentrancyGuard {
             _safeTransfer(token, factory.getPair(wmatic, address(cnt)), amount);
             return amount;
         }
-        // If the target pair doesn't exist, don't convert anything
+        // Revert transaction if the target pair doesn't exist
         IPolydexPair pair = IPolydexPair(factory.getPair(token, wmatic));
-        if (address(pair) == address(0)) {
-            return 0;
-        }
+        require(address(pair) != address(0),"Cannot be converted");
+
         // Choose the correct reserve to swap from
         (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
         address token0 = pair.token0();
@@ -215,5 +214,11 @@ contract Converter is Ownable, ReentrancyGuard {
         uint256 amount
     ) internal {
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    function rescueFunds(address token) external onlyOwner {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(balance > 0, "Insufficient token balance");
+        IERC20(token).safeTransfer(owner(), balance);
     }
 }
