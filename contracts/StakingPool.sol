@@ -545,7 +545,7 @@ contract StakingPool is
     {
         RewardInfo storage rewardInfo = rewardPool[_rewardTokenIndex];
 
-        _safeTransfer(address(rewardInfo.rewardToken), msg.sender, _amount);
+        rewardInfo.rewardToken.transfer(msg.sender, _amount);
     }
 
     // Wrapper for safeTransfer
@@ -569,9 +569,9 @@ contract StakingPool is
     ) private {
         uint256 rewardBal = _rewardToken.balanceOf(address(this));
         if (_amount > rewardBal) {
-            _safeTransfer(address(_rewardToken), _to, rewardBal);
+            _rewardToken.transfer(_to, rewardBal);
         } else {
-            _safeTransfer(address(_rewardToken), _to, _amount);
+            _rewardToken.transfer(_to, _amount);
         }
     }
 }
