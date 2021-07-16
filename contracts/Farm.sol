@@ -9,7 +9,7 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // import "@nomiclabs/buidler/console.sol";
-interface IMigratorChef {
+interface IMigrator {
     function migrate(IERC20 token) external returns (IERC20);
 }
 
@@ -70,7 +70,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     // Bonus muliplier for early cnt makers.
     uint256 public BONUS_MULTIPLIER = 1;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
-    IMigratorChef public migrator;
+    IMigrator public migrator;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -106,7 +106,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
         uint256 accCNTPerShare
     );
     event PoolMigrated(uint256 indexed pid);
-    event MigratorUpdated(IMigratorChef indexed newMigrator);
+    event MigratorUpdated(IMigrator indexed newMigrator);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(
@@ -256,7 +256,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     }
 
     // Set the migrator contract. Can only be called by the owner.
-    function setMigrator(IMigratorChef _migrator) external onlyOwner {
+    function setMigrator(IMigrator _migrator) external onlyOwner {
         migrator = _migrator;
         emit MigratorUpdated(_migrator);
     }
