@@ -44,16 +44,16 @@ npm run deployRouter:test
 
 - ETH - https://explorer-mumbai.maticvigil.com/address/0xf2DEF4fD74149231A45d6D5dDC4e5B38F7584E26
 
-- MasterChef - https://explorer-mumbai.maticvigil.com/address/0xC04c845a10B08A0A17A8be8d7c08E450A3cdDaBd
+- Farm - https://explorer-mumbai.maticvigil.com/address/0xC04c845a10B08A0A17A8be8d7c08E450A3cdDaBd
 
 ## test output
 
 ```
-  MasterChef
+  Farm
     ✓ should set correct state variables (527ms)
     With ERC/LP token added to the field
       ✓ should allow emergency withdraw (673ms)
-      ✓ is CNT transfering to masterchef (346ms)
+      ✓ is CNT transfering to farmingcontract (346ms)
       ✓ should give out CNTs only after farming time (1809ms)
       ✓ should not distribute CNTs if no one deposit (1262ms)
       ✓ should distribute CNTs properly for each staker (671ms)
@@ -62,7 +62,7 @@ npm run deployRouter:test
 
   Elastic Farming
     checking DepsoitFor and withdrawFor functionlity
-      ✓ is CNT transfering to masterchef (52ms)
+      ✓ is CNT transfering to farmingcontract (52ms)
       ✓ checking deposit for functionlity (181ms)
       ✓ whitelisted user should only be able to run withdrawFor (272ms)
     Harvest Time Lock
