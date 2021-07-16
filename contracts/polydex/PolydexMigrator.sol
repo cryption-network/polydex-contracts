@@ -16,7 +16,7 @@ contract PolyDexMigrator {
     IPolydexRouter public oldRouter;
     IPolydexRouter public router;
 
-    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) {
         oldRouter = _oldRouter;
         router = _router;
     }
