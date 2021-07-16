@@ -90,8 +90,7 @@ contract PolyDexMigrator {
             tokenB,
             liquidity,
             amountAMin,
-            amountBMin,
-            deadline
+            amountBMin
         );
 
         // Add liquidity to the new router with depsoit in Farm 

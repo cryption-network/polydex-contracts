@@ -71,6 +71,8 @@ contract StakingPool is
 
     RewardInfo[] public rewardPool;
 
+    bool public isInitiated;
+
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
@@ -108,6 +110,9 @@ contract StakingPool is
         uint16 _withdrawalFeeBP,
         uint256 _harvestInterval
     ) external onlyOwner {
+
+        require(!isInitiated, "Staking pool is already initiated");
+
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
@@ -116,6 +121,8 @@ contract StakingPool is
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
             "add: invalid harvest interval"
         );
+
+        isInitiated = true;
 
         TransferHelper.safeTransferFrom(
             address(_rewardToken),
