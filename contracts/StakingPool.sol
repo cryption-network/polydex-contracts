@@ -548,15 +548,6 @@ contract StakingPool is
         rewardInfo.rewardToken.transfer(msg.sender, _amount);
     }
 
-    // Wrapper for safeTransfer
-    function _safeTransfer(
-        address token,
-        address to,
-        uint256 amount
-    ) internal {
-        IERC20(token).safeTransfer(to, amount);
-    }
-
     /**
      * @notice Safe reward transfer function, just in case a rounding error causes pool to not have enough reward tokens
      * @param _amount the total amount of tokens to transfer
