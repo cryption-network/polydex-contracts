@@ -21,7 +21,7 @@ describe("Elastic Farming", function () {
 
     this.FarmingContract = await ethers.getContractFactory("Farm");
     this.CryptionNetworkToken = await ethers.getContractFactory(
-      "CryptionNetworkToken"
+      "MockCryptionNetworkToken"
     );
     this.ERC20Mock = await ethers.getContractFactory("ERC20Mock", this.minter);
   });

@@ -1,6 +1,6 @@
 pragma solidity ^0.7.0;
 
-import "./CryptionNetworkToken.sol";
+import "./MCryptionNetworkToken.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./libraries/NativeMetaTransaction.sol";
@@ -54,7 +54,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     }
 
     // The CNT TOKEN!
-    CryptionNetworkToken public cnt;
+    MCryptionNetworkToken public cnt;
     // Block number when bonus CNT period ends.
     uint256 public bonusEndBlock;
     // CNT tokens created per block.
@@ -126,7 +126,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     event UserBlacklisted(address _primaryUser, address _blacklistedUser);
 
     constructor(
-        CryptionNetworkToken _cnt,
+        MCryptionNetworkToken _cnt,
         uint256 _cntPerBlock,
         address _feeAddress,
         uint256 _startBlock,

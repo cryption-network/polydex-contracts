@@ -3,11 +3,11 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./libraries/NativeMetaTransaction.sol";
+import "../libraries/NativeMetaTransaction.sol";
 
 // CryptionNetworkToken with Governance.
 
-contract CryptionNetworkToken is ERC20Burnable, Ownable, NativeMetaTransaction {
+contract MockCryptionNetworkToken is ERC20Burnable, Ownable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     constructor(address tokenHolder) ERC20("Cryption Network Token", "CNT") {
