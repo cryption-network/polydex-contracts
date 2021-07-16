@@ -18,8 +18,7 @@ contract PolyDexMigrator {
     IPolydexRouter public oldRouter;
     IPolydexRouter public router;
 
-
-    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) public {
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) {
         oldRouter = _oldRouter;
         router = _router;
     }
@@ -58,8 +57,7 @@ contract PolyDexMigrator {
             tokenB,
             liquidity,
             amountAMin,
-            amountBMin,
-            deadline
+            amountBMin
         );
 
         // Add liquidity to the new router
@@ -113,8 +111,7 @@ contract PolyDexMigrator {
         address tokenB,
         uint256 liquidity,
         uint256 amountAMin,
-        uint256 amountBMin,
-        uint256 deadline
+        uint256 amountBMin
     ) internal returns (uint256 amountA, uint256 amountB) {
         IPolydexPair pair = IPolydexPair(pairForOldRouter(tokenA, tokenB));
         pair.transferFrom(msg.sender, address(pair), liquidity);
