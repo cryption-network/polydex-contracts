@@ -336,7 +336,7 @@ contract StakingPool is
     function _deposit(uint256 _amount, address _user) internal {
         UserInfo storage user = userInfo[_user];
         user.whiteListedHandlers[_user] = true;
-        payOrLockupPendingReward(_user, _user, _amount, true);
+        payOrLockupPendingReward(_user, _user);
         if (user.amount == 0 && _amount > 0) {
             farmInfo.numFarmers++;
         }
@@ -377,7 +377,7 @@ contract StakingPool is
     ) internal {
         UserInfo storage user = userInfo[_user];
         require(user.amount >= _amount, "INSUFFICIENT");
-        payOrLockupPendingReward(_user, _withdrawer, _amount, false);
+        payOrLockupPendingReward(_user, _withdrawer);
         if (user.amount == _amount && _amount > 0) {
             farmInfo.numFarmers--;
         }
@@ -443,9 +443,7 @@ contract StakingPool is
 
     function payOrLockupPendingReward(
         address _user,
-        address _withdrawer,
-        uint256 _amount,
-        bool _isOperationAdd
+        address _withdrawer
     ) internal {
         UserInfo storage user = userInfo[_user];
         if (user.nextHarvestUntil == 0) {
