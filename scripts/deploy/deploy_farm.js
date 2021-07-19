@@ -3,7 +3,6 @@
 //
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
 const ConstructorParams = require("../constructorParams.json");
 
@@ -17,7 +16,7 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider();
   const [deployer] = await ethers.getSigners();
 
-  const Farm = await ethers.getContractFactory("Farm");
+  const Farm = await hre.ethers.getContractFactory("Farm");
   const farmInstance = await Farm.deploy(
     ConstructorParams.CNT_TOKEN,
     ConstructorParams.CNT_PER_BLOCK,

@@ -7,16 +7,7 @@ const hre = require("hardhat");
 const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
-  const provider = new ethers.providers.JsonRpcProvider();
-  const [deployer] = await ethers.getSigners();
-
-  const Converter = await ethers.getContractFactory("Converter");
+  const Converter = await hre.ethers.getContractFactory("Converter");
   const converterInstance = await Converter.deploy(
     ConstructorParams.POLYDEX_FACTORY,
     ConstructorParams.CNT_STAKER,
