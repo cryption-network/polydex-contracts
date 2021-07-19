@@ -1,12 +1,12 @@
 const hre = require("hardhat");
-const {WMATIC, POLYDEX_FACTORY} = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   // We get the contract to deploy
   const Router = await hre.ethers.getContractFactory("PolydexRouter");
   const router = await Router.deploy(
-    POLYDEX_FACTORY,
-    WMATIC
+    ConstructorParams.POLYDEX_FACTORY,
+    ConstructorParams.WMATIC
   );
   console.log("PolydexRouter deployed at:", router.address);
 }

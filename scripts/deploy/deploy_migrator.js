@@ -5,7 +5,7 @@
 // Runtime Environment's members available in the global scope.
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
-const Addresses = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -22,8 +22,8 @@ async function main() {
   // We get the contract to deploy
   const PolydexMigrator = await ethers.getContractFactory("PolyDexMigrator");
   const polydexMigratorInstance = await PolydexMigrator.deploy(
-    Addresses.oldrouter,
-    Addresses.newrouter
+    ConstructorParams.oldrouter,
+    ConstructorParams.newrouter
   );
   await polydexMigratorInstance.deployed();
   console.log("PolydexMigrator deployed at " + polydexMigratorInstance.address);

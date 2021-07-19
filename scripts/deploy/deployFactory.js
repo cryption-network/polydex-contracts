@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { FEETO_SETTER } = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   // We get the contract to deploy
@@ -7,7 +7,7 @@ async function main() {
     "PolydexFactory"
   );
   const factory = await Factory.deploy(
-    FEETO_SETTER
+    ConstructorParams.FEETO_SETTER
   );
 
   console.log("PolydexFactory deployed to:", factory.address);

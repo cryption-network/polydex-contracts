@@ -21,7 +21,7 @@ npm run compile
 ```
 npm run deployFactory:test
 
-NOTE : Make sure to update FactoryAddress in addresses.json & init code hash in PolydexLibrary before deploying Polydex Router
+NOTE : Make sure to update FactoryAddress in constructorParams.json & init code hash in PolydexLibrary before deploying Polydex Router
 
 npm run deployRouter:test
 ```

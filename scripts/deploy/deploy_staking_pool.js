@@ -5,7 +5,7 @@
 // Runtime Environment's members available in the global scope.
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
-const Addresses = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -19,7 +19,7 @@ async function main() {
 
   const StakingPool = await ethers.getContractFactory("StakingPool");
   const stakingPoolInstance = await StakingPool.deploy(
-    Addresses.FEE_ADDRESS
+    ConstructorParams.FEE_ADDRESS
   );
   await stakingPoolInstance.deployed();
   console.log("Staking Pool deployed at " + stakingPoolInstance.address);
