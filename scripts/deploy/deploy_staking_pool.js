@@ -7,15 +7,6 @@ const hre = require("hardhat");
 const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
-  const provider = new ethers.providers.JsonRpcProvider();
-  const [deployer] = await ethers.getSigners();
-
   const StakingPool = await hre.ethers.getContractFactory("StakingPool");
   const stakingPoolInstance = await StakingPool.deploy(
     ConstructorParams.FEE_ADDRESS
