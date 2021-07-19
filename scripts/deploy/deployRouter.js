@@ -8,7 +8,18 @@ async function main() {
     ConstructorParams.POLYDEX_FACTORY,
     ConstructorParams.WMATIC
   );
+
   console.log("PolydexRouter deployed at:", router.address);
+
+  await router.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: router.address,
+    constructorArguments: [
+      ConstructorParams.POLYDEX_FACTORY,
+      ConstructorParams.WMATIC
+    ],
+  });
 }
 
 main()

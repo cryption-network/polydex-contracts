@@ -3,7 +3,6 @@
 //
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
 const ConstructorParams = require("../constructorParams.json");
 
@@ -23,6 +22,14 @@ async function main() {
   );
   await cntStakerInstance.deployed();
   console.log("CNT Staker deployed at " + cntStakerInstance.address);
+  await cntStakerInstance.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: cntStakerInstance.address,
+    constructorArguments: [
+      ConstructorParams.CNT_TOKEN
+    ],
+  });
 }
 
 // We recommend this pattern to be able to use async/await everywhere

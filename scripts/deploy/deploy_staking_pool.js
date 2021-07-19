@@ -23,6 +23,14 @@ async function main() {
   );
   await stakingPoolInstance.deployed();
   console.log("Staking Pool deployed at " + stakingPoolInstance.address);
+  await stakingPoolInstance.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: stakingPoolInstance.address,
+    constructorArguments: [
+      ConstructorParams.FEE_ADDRESS
+    ],
+  });
 }
 
 // We recommend this pattern to be able to use async/await everywhere

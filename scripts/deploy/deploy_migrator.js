@@ -27,6 +27,16 @@ async function main() {
   );
   await polydexMigratorInstance.deployed();
   console.log("PolydexMigrator deployed at " + polydexMigratorInstance.address);
+
+  await polydexMigratorInstance.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: polydexMigratorInstance.address,
+    constructorArguments: [
+      ConstructorParams.oldrouter,
+      ConstructorParams.newrouter
+    ],
+  });
 }
 
 // We recommend this pattern to be able to use async/await everywhere

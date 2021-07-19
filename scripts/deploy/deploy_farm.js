@@ -27,6 +27,18 @@ async function main() {
   );
   await farmInstance.deployed();
   console.log("Farm deployed at " + farmInstance.address);
+  await farmInstance.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: farmInstance.address,
+    constructorArguments: [
+      ConstructorParams.CNT_TOKEN,
+      ConstructorParams.CNT_PER_BLOCK,
+      ConstructorParams.FEE_ADDRESS,
+      ConstructorParams.START_BLOCK,
+      ConstructorParams.BONUS_END_BLOCK
+    ],
+  });
 }
 
 // We recommend this pattern to be able to use async/await everywhere
