@@ -4,23 +4,33 @@ pragma solidity =0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./interfaces/IPolydexPair.sol";
-import "./interfaces/IPolydexRouter.sol";
-import "./interfaces/IPolydexFactory.sol";
-import "./libraries/PolydexLibrary.sol";
-import "./interfaces/IFarm.sol";
-import "./interfaces/IStakingPool.sol";
+import "../interfaces/IPolydexPair.sol";
+import "../interfaces/IPolydexRouter.sol";
+import "../interfaces/IPolydexFactory.sol";
+import "../libraries/PolydexLibrary.sol";
+import "../interfaces/IFarm.sol";
+import '../interfaces/IWETH.sol';
+import "../interfaces/IStakingPool.sol";
 
 // Migrator helps you migrate your existing LP tokens to Polydex LP ones
 contract PolyDexMigrator {
-    using SafeERC20 for IERC20;
+using SafeERC20 for IERC20;
 
     IPolydexRouter public oldRouter;
     IPolydexRouter public router;
+    address public WETH;
+    address public dfynWeth;
 
-    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router) {
+
+    constructor(IPolydexRouter _oldRouter, IPolydexRouter _router,address _WETH,address _dfynWeth) public {
         oldRouter = _oldRouter;
         router = _router;
+        dfynWeth = _dfynWeth;
+        WETH = _WETH;
+    }
+
+    receive() external payable {
+        assert(msg.sender == dfynWeth || msg.sender == WETH); // only accept ETH via fallback from the WETH and dfynWETH contract
     }
 
     function migrateWithPermit(
@@ -50,25 +60,39 @@ contract PolyDexMigrator {
         uint256 deadline
     ) public {
         require(deadline >= block.timestamp, 'Swap: EXPIRED');
-
+        address TokenA = tokenA;
+        address TokenB = tokenB;
         // Remove liquidity from the old router with permit
         (uint256 amountA, uint256 amountB) = removeLiquidity(
             tokenA,
             tokenB,
             liquidity,
             amountAMin,
-            amountBMin
+            amountBMin,
+            deadline
         );
 
+        if( tokenA == dfynWeth){
+          IWETH(dfynWeth).withdraw(amountA);
+          IWETH(WETH).deposit{value: amountA}();
+          TokenA = WETH;
+        }
+
+        if( tokenB == dfynWeth){
+          IWETH(dfynWeth).withdraw(amountB);
+          IWETH(WETH).deposit{value: amountB}();
+          TokenB = WETH;
+        }
+
         // Add liquidity to the new router
-        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidity(tokenA, tokenB, amountA, amountB);
+        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidity(TokenA, TokenB, amountA, amountB);
 
         // Send remaining tokens to msg.sender
         if (amountA > pooledAmountA) {
-            IERC20(tokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
+            IERC20(TokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
         }
         if (amountB > pooledAmountB) {
-            IERC20(tokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
+            IERC20(TokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
         }
     }
 
@@ -83,25 +107,40 @@ contract PolyDexMigrator {
         uint256 pid
     ) public {
         require(deadline >= block.timestamp, 'Swap: EXPIRED');
-
+        address TokenA = tokenA;
+        address TokenB = tokenB;
         // Remove liquidity from the old router with permit
         (uint256 amountA, uint256 amountB) = removeLiquidity(
             tokenA,
             tokenB,
             liquidity,
             amountAMin,
-            amountBMin
+            amountBMin,
+            deadline
         );
 
-        // Add liquidity to the new router with depsoit in Farm 
-        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidityWithDeposit(tokenA, tokenB, amountA, amountB, pid, _Farm);
+        if( tokenA == dfynWeth){
+          IWETH(dfynWeth).withdraw(amountA);
+          IWETH(WETH).deposit{value: amountA}();
+          TokenA = WETH;
+        }
+
+        if( tokenB == dfynWeth){
+          IWETH(dfynWeth).withdraw(amountB);
+          IWETH(WETH).deposit{value: amountB}();
+          TokenB = WETH;
+        }
+
+        // Add liquidity to the new router
+        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidityWithDeposit(TokenA, TokenB, amountA, amountB, pid, _Farm);
+
 
         // Send remaining tokens to msg.sender
         if (amountA > pooledAmountA) {
-            IERC20(tokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
+            IERC20(TokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
         }
         if (amountB > pooledAmountB) {
-            IERC20(tokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
+            IERC20(TokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
         }
     }
 
@@ -110,7 +149,8 @@ contract PolyDexMigrator {
         address tokenB,
         uint256 liquidity,
         uint256 amountAMin,
-        uint256 amountBMin
+        uint256 amountBMin,
+        uint256 deadline
     ) internal returns (uint256 amountA, uint256 amountB) {
         IPolydexPair pair = IPolydexPair(pairForOldRouter(tokenA, tokenB));
         pair.transferFrom(msg.sender, address(pair), liquidity);
@@ -130,7 +170,7 @@ contract PolyDexMigrator {
                 keccak256(abi.encodePacked(token0, token1)),
                 // Init code hash. It would be specific each exchange(different for quickswap, dfyn, etc).
                 // So when deploying Migrator, change it.
-                hex'eb126fcec23a301a6ca69c92882e216c77c0fb35a8bb4a45e82ac47d18d0cc3e'
+                hex'8cb41b27c88f8934c0773207afb757d84c4baa607990ad4a30505e42438d999a'
             ))));
     }
 
