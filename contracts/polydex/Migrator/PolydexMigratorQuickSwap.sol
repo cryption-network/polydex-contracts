@@ -130,7 +130,7 @@ contract PolyDexMigrator {
                 keccak256(abi.encodePacked(token0, token1)),
                 // Init code hash. It would be specific each exchange(different for quickswap, dfyn, etc).
                 // So when deploying Migrator, change it.
-                hex'8cb41b27c88f8934c0773207afb757d84c4baa607990ad4a30505e42438d999a'
+                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'
             ))));
     }
 
