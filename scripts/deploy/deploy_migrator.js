@@ -17,7 +17,7 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider();
   const [deployer] = await ethers.getSigners();
 
-  // Note : Make sure to change init pair hash in `pairForOldRouter` in 
+  // Note : Make sure to change init pair hash in `pairForOldRouter` in
   //        PolydexMigrator contract before deploying.
   // We get the contract to deploy
   const PolydexMigrator = await ethers.getContractFactory("PolyDexMigrator");

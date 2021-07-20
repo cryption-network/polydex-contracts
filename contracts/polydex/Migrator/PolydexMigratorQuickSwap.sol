@@ -12,7 +12,7 @@ import "../interfaces/IFarm.sol";
 import "../interfaces/IStakingPool.sol";
 
 // Migrator helps you migrate your existing LP tokens to Polydex LP ones
-contract PolyDexMigrator {
+contract PolyDexMigratorQuickSwap {
     using SafeERC20 for IERC20;
 
     IPolydexRouter public oldRouter;
