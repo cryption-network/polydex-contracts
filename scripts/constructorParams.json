@@ -10,7 +10,10 @@
   "CNT_STAKER": "0x82C2Fb7410dcfFEd4e9147413BD5005a0a6F58aA",
   "L2Burner": "0xe0eCe8cCA8ce72d2AE862b6C564373268e2A80E9",
   "newrouter": "0xBd13225f0a45BEad8510267B4D6a7c78146Be459",
-  "oldrouter": " ",
+  "dfyn_router": "0xa102072a4c07f06ec3b4900fdc4c7b80b6c57429",
+  "quick_router": "0xa5e0829caced8ffdd4de3c43696c57f7d7a678ff",
+  "sushi_router": "0x1b02da8cb0d097eb8d57a175b88c7d8b47997506",
+  "dfyn_Wmatic": "0x4c28f48448720e9000907bc2611f73022fdce1fa",
   "CNT_PER_BLOCK": " ",
   "START_BLOCK": " ",
   "BONUS_END_BLOCK": " "
