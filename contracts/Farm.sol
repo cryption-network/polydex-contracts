@@ -8,7 +8,6 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// import "@nomiclabs/buidler/console.sol";
 interface IMigrator {
     function migrate(IERC20 token) external returns (IERC20);
 }
