@@ -4,15 +4,15 @@ pragma solidity =0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./interfaces/IPolydexPair.sol";
-import "./interfaces/IPolydexRouter.sol";
-import "./interfaces/IPolydexFactory.sol";
-import "./libraries/PolydexLibrary.sol";
-import "./interfaces/IFarm.sol";
-import "./interfaces/IStakingPool.sol";
+import "../interfaces/IPolydexPair.sol";
+import "../interfaces/IPolydexRouter.sol";
+import "../interfaces/IPolydexFactory.sol";
+import "../libraries/PolydexLibrary.sol";
+import "../interfaces/IFarm.sol";
+import "../interfaces/IStakingPool.sol";
 
 // Migrator helps you migrate your existing LP tokens to Polydex LP ones
-contract PolyDexMigrator {
+contract PolyDexMigratorSushiSwap {
     using SafeERC20 for IERC20;
 
     IPolydexRouter public oldRouter;
@@ -130,7 +130,7 @@ contract PolyDexMigrator {
                 keccak256(abi.encodePacked(token0, token1)),
                 // Init code hash. It would be specific each exchange(different for quickswap, dfyn, etc).
                 // So when deploying Migrator, change it.
-                hex'eb126fcec23a301a6ca69c92882e216c77c0fb35a8bb4a45e82ac47d18d0cc3e'
+                hex'e18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303'
             ))));
     }
 
