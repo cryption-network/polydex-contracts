@@ -8,7 +8,6 @@ import "./polydex/interfaces/IPolydexFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./CryptionNetworkToken.sol";
 
 // Converter is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
 // This contract handles "serving up" rewards for xCNT holders & also burning some by trading tokens collected from fees for CNT.
@@ -20,7 +19,7 @@ contract Converter is Ownable, ReentrancyGuard {
     IPolydexFactory public factory;
     address public cntStaker;
     // The CNT TOKEN!
-    CryptionNetworkToken public cnt;
+    IERC20 public cnt;
     address public wmatic;
     address public l2Burner;
     uint16 public burnAllocation;
@@ -38,7 +37,7 @@ contract Converter is Ownable, ReentrancyGuard {
     constructor(
         IPolydexFactory _factory,
         address _cntStaker,
-        CryptionNetworkToken _cnt,
+        IERC20 _cnt,
         address _l2Burner,
         address _wmatic,
         uint16 _burnAllocation,

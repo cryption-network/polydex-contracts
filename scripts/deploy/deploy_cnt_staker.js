@@ -3,26 +3,24 @@
 //
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
-const Addresses = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
-  const provider = new ethers.providers.JsonRpcProvider();
-  const [deployer] = await ethers.getSigners();
-
-  const CNTStaker = await ethers.getContractFactory("CNTStaker");
+  const CNTStaker = await hre.ethers.getContractFactory("CNTStaker");
   const cntStakerInstance = await CNTStaker.deploy(
-    Addresses.CNT_TOKEN,
+    ConstructorParams.CNT_TOKEN,
   );
   await cntStakerInstance.deployed();
   console.log("CNT Staker deployed at " + cntStakerInstance.address);
+  await cntStakerInstance.deployTransaction.wait([(confirms = 6)]);
+
+  await hre.run("verify:verify", {
+    address: cntStakerInstance.address,
+    constructorArguments: [
+      ConstructorParams.CNT_TOKEN
+    ],
+  });
 }
 
 // We recommend this pattern to be able to use async/await everywhere

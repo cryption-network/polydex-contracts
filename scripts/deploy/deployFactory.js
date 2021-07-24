@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { FEETO_SETTER } = require("../addresses.json");
+const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   // We get the contract to deploy
@@ -7,15 +7,23 @@ async function main() {
     "PolydexFactory"
   );
   const factory = await Factory.deploy(
-    FEETO_SETTER
+    ConstructorParams.FEETO_SETTER
   );
 
   console.log("PolydexFactory deployed to:", factory.address);
 
-  let pairhash = await factory.pairCodeHash();
-   // Note: While deploying Router make sure to change pair hash in PolydexLibrary before deploying.
-  console.log("PolydexFactory Pair Init Code Hash:", pairhash);
+  await factory.deployTransaction.wait([(confirms = 6)]);
 
+  await hre.run("verify:verify", {
+    address: factory.address,
+    constructorArguments: [
+      ConstructorParams.FEETO_SETTER
+    ],
+  });
+
+  let pairhash = await factory.pairCodeHash();
+  // Note: While deploying Router make sure to change pair hash in PolydexLibrary before deploying.
+  console.log("PolydexFactory Pair Init Code Hash:", pairhash);
 }
 
 main()

@@ -1,17 +1,12 @@
 pragma solidity ^0.7.0;
 
-import "./CryptionNetworkToken.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-// import "@nomiclabs/buidler/console.sol";
-interface IMigratorChef {
-    function migrate(IERC20 token) external returns (IERC20);
-}
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Farm is the major distributor of CNT to the community. He gives juicy CNT rewards as per user's stake.
 //
@@ -54,7 +49,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     }
 
     // The CNT TOKEN!
-    CryptionNetworkToken public cnt;
+    IERC20 public cnt;
     // Block number when bonus CNT period ends.
     uint256 public bonusEndBlock;
     // CNT tokens created per block.
@@ -69,8 +64,6 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     uint256 public totalLockedUpRewards;
     // Bonus muliplier for early cnt makers.
     uint256 public BONUS_MULTIPLIER = 1;
-    // The migrator contract. It has a lot of power. Can only be set through governance (owner).
-    IMigratorChef public migrator;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -105,8 +98,6 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
         uint256 lpSupply,
         uint256 accCNTPerShare
     );
-    event PoolMigrated(uint256 indexed pid);
-    event MigratorUpdated(IMigratorChef indexed newMigrator);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(
@@ -126,7 +117,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     event UserBlacklisted(address _primaryUser, address _blacklistedUser);
 
     constructor(
-        CryptionNetworkToken _cnt,
+        IERC20 _cnt,
         uint256 _cntPerBlock,
         address _feeAddress,
         uint256 _startBlock,
@@ -253,30 +244,6 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
             _withdrawalFeeBP,
             _harvestInterval
         );
-    }
-
-    // Set the migrator contract. Can only be called by the owner.
-    function setMigrator(IMigratorChef _migrator) external onlyOwner {
-        migrator = _migrator;
-        emit MigratorUpdated(_migrator);
-    }
-
-    // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
-    function migrate(uint256 _pid)
-        external
-        validatePoolByPid(_pid)
-        nonReentrant
-    {
-        require(address(migrator) != address(0), "migrate: no migrator");
-        PoolInfo storage pool = poolInfo[_pid];
-        IERC20 lpToken = pool.lpToken;
-        uint256 bal = lpToken.balanceOf(address(this));
-        lpToken.safeApprove(address(migrator), bal);
-        IERC20 newLpToken = migrator.migrate(lpToken);
-        require(bal == newLpToken.balanceOf(address(this)), "migrate: bad");
-        pool.lpToken = newLpToken;
-
-        emit PoolMigrated(_pid);
     }
 
     // Return reward multiplier over the given _from to _to block.

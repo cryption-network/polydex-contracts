@@ -19,9 +19,9 @@ describe("Elastic Farming", function () {
     this.dev = this.signers[4];
     this.minter = this.signers[5];
 
-    this.MasterChef = await ethers.getContractFactory("Farm");
+    this.FarmingContract = await ethers.getContractFactory("Farm");
     this.CryptionNetworkToken = await ethers.getContractFactory(
-      "CryptionNetworkToken"
+      "MockCryptionNetworkToken"
     );
     this.ERC20Mock = await ethers.getContractFactory("ERC20Mock", this.minter);
   });
@@ -54,48 +54,48 @@ describe("Elastic Farming", function () {
       await this.lp2.transfer(this.carol.address, "1000");
     });
 
-    it("is CNT transfering to masterchef", async function () {
-      this.chef = await this.MasterChef.deploy(
+    it("is CNT transfering to farmingcontract", async function () {
+      this.farm = await this.FarmingContract.deploy(
         this.CNT.address,
         "100",
         this.adminaddress,
         (this.blocknumber + 100).toString(),
         (this.blocknumber + 1000).toString()
       );
-      await this.chef.deployed();
+      await this.farm.deployed();
 
-      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
-      expect(await this.CNT.balanceOf(this.chef.address)).to.equal(
+      await this.CNT.transfer(this.farm.address, "1000000000000000000000000");
+      expect(await this.CNT.balanceOf(this.farm.address)).to.equal(
         "1000000000000000000000000"
       );
     });
 
     it("checking deposit for functionlity", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.MasterChef.deploy(
+      this.farm = await this.FarmingContract.deploy(
         this.CNT.address,
         "1000",
         this.adminaddress,
         (this.blocknumber + 100).toString(),
         (this.blocknumber + 100).toString()
       );
-      await this.chef.deployed();
+      await this.farm.deployed();
 
-      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+      await this.CNT.transfer(this.farm.address, "1000000000000000000000000");
 
-      await this.chef.add("100", this.lp.address, 0, 0, true);
+      await this.farm.add("100", this.lp.address, 0, 0, true);
 
-      await this.lp.connect(this.bob).approve(this.chef.address, "1000");
-      await this.chef.connect(this.bob).deposit(0, "100");
+      await this.lp.connect(this.bob).approve(this.farm.address, "1000");
+      await this.farm.connect(this.bob).deposit(0, "100");
 
       await advanceBlockTo(this.blocknumber + 100);
 
-      await this.chef.connect(this.bob).deposit(0, "0"); // block 101
+      await this.farm.connect(this.bob).deposit(0, "0"); // block 101
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("1000");
 
       // 2 blocks
-      await this.lp.connect(this.carol).approve(this.chef.address, "1000");
-      await this.chef
+      await this.lp.connect(this.carol).approve(this.farm.address, "1000");
+      await this.farm
         .connect(this.carol)
         .depositFor(0, "100", this.bob.address);
 
@@ -103,14 +103,14 @@ describe("Elastic Farming", function () {
 
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3000");
 
-      this.bobuserinfo = await this.chef.userInfo("0", this.bob.address);
+      this.bobuserinfo = await this.farm.userInfo("0", this.bob.address);
       this.bobDepositedAmount = await this.bobuserinfo["amount"].toString();
 
       expect(this.bobDepositedAmount).to.equal("200");
 
       expect(await this.CNT.balanceOf(this.carol.address)).to.equal("0");
 
-      this.caroluserinfo = await this.chef.userInfo("0", this.carol.address);
+      this.caroluserinfo = await this.farm.userInfo("0", this.carol.address);
       this.carolDepositedAmount = await this.caroluserinfo["amount"].toString();
 
       expect(this.carolDepositedAmount).to.equal("0");
@@ -118,43 +118,43 @@ describe("Elastic Farming", function () {
 
     it("whitelisted user should only be able to run withdrawFor", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.MasterChef.deploy(
+      this.farm = await this.FarmingContract.deploy(
         this.CNT.address,
         "1000",
         this.adminaddress,
         (this.blocknumber + 100).toString(),
         (this.blocknumber + 100).toString()
       );
-      await this.chef.deployed();
+      await this.farm.deployed();
 
-      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+      await this.CNT.transfer(this.farm.address, "1000000000000000000000000");
 
-      await this.chef.add("100", this.lp.address, 0, 0, true);
+      await this.farm.add("100", this.lp.address, 0, 0, true);
 
       // deposit for
-      await this.lp.connect(this.carol).approve(this.chef.address, "1000");
-      await this.chef
+      await this.lp.connect(this.carol).approve(this.farm.address, "1000");
+      await this.farm
         .connect(this.carol)
         .depositFor(0, "100", this.bob.address);
 
       await advanceBlockTo(this.blocknumber + 100);
 
       await expect(
-        this.chef.connect(this.carol).withdrawFor("0", "100", this.bob.address)
+        this.farm.connect(this.carol).withdrawFor("0", "100", this.bob.address)
       ).to.be.revertedWith("user not whitelisted");
 
-      await this.chef.connect(this.bob).addUserToWhiteList(this.carol.address);
+      await this.farm.connect(this.bob).addUserToWhiteList(this.carol.address);
 
-      this.pendingcntofBob = await this.chef.pendingCNT("0", this.bob.address);
+      this.pendingcntofBob = await this.farm.pendingCNT("0", this.bob.address);
       // 1block
-      await this.chef
+      await this.farm
         .connect(this.carol)
         .withdrawFor("0", "100", this.bob.address);
 
-      this.bobuserinfo = await this.chef.userInfo("0", this.bob.address);
+      this.bobuserinfo = await this.farm.userInfo("0", this.bob.address);
       this.bobDepositedAmount = await this.bobuserinfo["amount"].toString();
 
-      this.pendingcntAfterWithdrawFor = await this.chef.pendingCNT(
+      this.pendingcntAfterWithdrawFor = await this.farm.pendingCNT(
         "0",
         this.bob.address
       );
@@ -168,16 +168,16 @@ describe("Elastic Farming", function () {
       // cnt pending == 3000
       expect(await this.CNT.balanceOf(this.carol.address)).to.equal("3000");
 
-      await this.chef
+      await this.farm
         .connect(this.bob)
         .removeUserFromWhiteList(this.carol.address);
 
-      await this.lp.connect(this.bob).approve(this.chef.address, "100");
-      await this.chef.connect(this.bob).deposit(0, "100");
+      await this.lp.connect(this.bob).approve(this.farm.address, "100");
+      await this.farm.connect(this.bob).deposit(0, "100");
 
       // error
       await expect(
-        this.chef.connect(this.carol).withdrawFor("0", "100", this.bob.address)
+        this.farm.connect(this.carol).withdrawFor("0", "100", this.bob.address)
       ).to.be.revertedWith("user not whitelisted");
     });
   });
@@ -205,88 +205,88 @@ describe("Elastic Farming", function () {
 
     it("reward got unlocked only after harvestInterval", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.MasterChef.deploy(
+      this.farm = await this.FarmingContract.deploy(
         this.CNT.address,
         "1000",
         this.adminaddress,
         (this.blocknumber + 100).toString(),
         (this.blocknumber + 100).toString()
       );
-      await this.chef.deployed();
+      await this.farm.deployed();
 
-      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+      await this.CNT.transfer(this.farm.address, "1000000000000000000000000");
 
       // reward lock period is 5 minutes
-      await this.chef.add("100", this.lp.address, 0, 300, true);
+      await this.farm.add("100", this.lp.address, 0, 300, true);
 
-      await this.lp.connect(this.bob).approve(this.chef.address, "1000");
-      await this.chef.connect(this.bob).deposit(0, "100");
+      await this.lp.connect(this.bob).approve(this.farm.address, "1000");
+      await this.farm.connect(this.bob).deposit(0, "100");
 
       await advanceBlockTo(this.blocknumber + 100);
 
-      await this.chef.connect(this.bob).deposit(0, "0"); // block 101
+      await this.farm.connect(this.bob).deposit(0, "0"); // block 101
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
-      expect(await this.chef.totalLockedUpRewards()).to.equal("1000");
+      expect(await this.farm.totalLockedUpRewards()).to.equal("1000");
 
-      await this.chef.connect(this.bob).deposit(0, "100"); // block 102
+      await this.farm.connect(this.bob).deposit(0, "100"); // block 102
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
-      expect(await this.chef.totalLockedUpRewards()).to.equal("2000");
+      expect(await this.farm.totalLockedUpRewards()).to.equal("2000");
 
       await advanceTime(300);
 
       // reward got unlocked only after time set ie 300 seconds
-      await this.chef.connect(this.bob).deposit(0, "0"); // block 103
+      await this.farm.connect(this.bob).deposit(0, "0"); // block 103
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3000");
-      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
+      expect(await this.farm.totalLockedUpRewards()).to.equal("0");
     });
 
     it("pending reward give after harvest interval if use withdraw", async function () {
       // 100 per block farming rate starting at block 100 with bonus until block 1000
-      this.chef = await this.MasterChef.deploy(
+      this.farm = await this.FarmingContract.deploy(
         this.CNT.address,
         "1000",
         this.adminaddress,
         (this.blocknumber + 100).toString(),
         (this.blocknumber + 100).toString()
       );
-      await this.chef.deployed();
+      await this.farm.deployed();
 
-      await this.CNT.transfer(this.chef.address, "1000000000000000000000000");
+      await this.CNT.transfer(this.farm.address, "1000000000000000000000000");
 
       // reward lock period is 5 minutes
-      await this.chef.add("100", this.lp.address, 0, 300, true);
+      await this.farm.add("100", this.lp.address, 0, 300, true);
 
-      await this.lp.connect(this.bob).approve(this.chef.address, "1000");
-      await this.chef.connect(this.bob).deposit(0, "100");
+      await this.lp.connect(this.bob).approve(this.farm.address, "1000");
+      await this.farm.connect(this.bob).deposit(0, "100");
 
-      await this.chef.connect(this.bob).deposit(0, "0");
-      await this.chef.connect(this.bob).deposit(0, "0");
+      await this.farm.connect(this.bob).deposit(0, "0");
+      await this.farm.connect(this.bob).deposit(0, "0");
 
       // withdraw 10
-      await this.chef.connect(this.bob).withdraw(0, "10"); // block 103
+      await this.farm.connect(this.bob).withdraw(0, "10"); // block 103
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("0");
-      this.lock = await this.chef.totalLockedUpRewards();
-      this.pending = await this.chef.pendingCNT("0", this.bob.address);
-      expect(await this.chef.totalLockedUpRewards()).to.equal("3000");
+      this.lock = await this.farm.totalLockedUpRewards();
+      this.pending = await this.farm.pendingCNT("0", this.bob.address);
+      expect(await this.farm.totalLockedUpRewards()).to.equal("3000");
 
       // 1000 - 100 + 10
       expect(await this.lp.balanceOf(this.bob.address)).to.equal("910");
 
       await advanceTime(300);
 
-      await this.chef.connect(this.bob).withdraw(0, "90"); // block 104
+      await this.farm.connect(this.bob).withdraw(0, "90"); // block 104
       expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000");
 
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal(3999);
-      expect(await this.chef.totalLockedUpRewards()).to.equal("0");
+      expect(await this.farm.totalLockedUpRewards()).to.equal("0");
 
       // 1000 - 100 + 10 + 90
 
-      await this.chef.connect(this.bob).deposit(0, "100"); // 105 - 4 block rewards
+      await this.farm.connect(this.bob).deposit(0, "100"); // 105 - 4 block rewards
 
-      await this.chef.connect(this.bob).deposit(0, "0");
+      await this.farm.connect(this.bob).deposit(0, "0");
       expect(await this.CNT.balanceOf(this.bob.address)).to.equal("3999");
-      expect(await this.chef.totalLockedUpRewards()).to.equal("1000");
+      expect(await this.farm.totalLockedUpRewards()).to.equal("1000");
     });
   });
 });

@@ -1,6 +1,6 @@
 # PolyDEX
 
-Contract are deployed on Matic Mumbai Testnet(80001)
+Contract are deployed on Polygon(Matic) (ChainID: 147)
 
 Feel free to read the code. More details coming soon.
 
@@ -21,39 +21,43 @@ npm run compile
 ```
 npm run deployFactory:test
 
-NOTE : Make sure to update FactoryAddress in addresses.json & init code hash in PolydexLibrary before deploying Polydex Router
+NOTE : Make sure to update FactoryAddress in constructorParams.json & init code hash in PolydexLibrary before deploying Polydex Router
 
 npm run deployRouter:test
 ```
 
 ## Deployed Contracts / Hash
 
-- CryptionNetworkToken(CNT) - https://explorer-mumbai.maticvigil.com/address/0xCda600560dBFb638D1acd860e0A33d57874931E9
+- MCryptionNetworkToken CNT on Matic ( L2 ): https://polygonscan.com/address/0xD1e6354fb05bF72A8909266203dAb80947dcEccF
 
-- PolydexFactory - https://explorer-mumbai.maticvigil.com/address/0xbC4e4924fbf2E94FF1Db6A1074A24d484a64069E
+- CryptionNetworkToken CNT on Ethereum ( L1 ): https://etherscan.io/address/0x429876c4a6f89fb470e92456b8313879df98b63c
+
+- L1Burner : https://etherscan.io/address/0xe0ece8cca8ce72d2ae862b6c564373268e2a80e9
+
+- L2Burner: https://polygonscan.com/address/0xe0eCe8cCA8ce72d2AE862b6C564373268e2A80E9
+
+- PolydexFactory: https://polygonscan.com/address/0x5bdd1cd910e3307582f213b33699e676e61dead9
 
 - PolydexPair init code hash - `8cb41b27c88f8934c0773207afb757d84c4baa607990ad4a30505e42438d999a`
 
-- PolydexRouter - https://explorer-mumbai.maticvigil.com/address/0xEAbdb225629a774a6efCEbeFDF673a7F4D7feb71
+- PolydexRouter: https://polygonscan.com/address/0xBd13225f0a45BEad8510267B4D6a7c78146Be459
 
-- WMATIC - https://explorer-mumbai.maticvigil.com/address/0x608b868Cc04cb70447eCAE7C12A847A4b8cB6Ec8
+- WETH/WMATIC : https://polygonscan.com/address/0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270
 
-- DAI - https://explorer-mumbai.maticvigil.com/address/0x6cA0Ad12Bb5191823cb0B44199dB6341b971976b
+- CNT Staker : https://polygonscan.com/address/0x82C2Fb7410dcfFEd4e9147413BD5005a0a6F58aA
 
-- USDT - https://explorer-mumbai.maticvigil.com/address/0xBA6fc2C28844c129c4e5b9116095881fE4f5584c
+- Converter: https://polygonscan.com/address/0x1fD45D08b609ddD18EA5438903347dfEA3193776
 
-- ETH - https://explorer-mumbai.maticvigil.com/address/0xf2DEF4fD74149231A45d6D5dDC4e5B38F7584E26
-
-- MasterChef - https://explorer-mumbai.maticvigil.com/address/0xC04c845a10B08A0A17A8be8d7c08E450A3cdDaBd
+- Farm - TBD
 
 ## test output
 
 ```
-  MasterChef
+  Farm
     ✓ should set correct state variables (527ms)
     With ERC/LP token added to the field
       ✓ should allow emergency withdraw (673ms)
-      ✓ is CNT transfering to masterchef (346ms)
+      ✓ is CNT transfering to farmingcontract (346ms)
       ✓ should give out CNTs only after farming time (1809ms)
       ✓ should not distribute CNTs if no one deposit (1262ms)
       ✓ should distribute CNTs properly for each staker (671ms)
@@ -62,7 +66,7 @@ npm run deployRouter:test
 
   Elastic Farming
     checking DepsoitFor and withdrawFor functionlity
-      ✓ is CNT transfering to masterchef (52ms)
+      ✓ is CNT transfering to farmingcontract (52ms)
       ✓ checking deposit for functionlity (181ms)
       ✓ whitelisted user should only be able to run withdrawFor (272ms)
     Harvest Time Lock
