@@ -18,6 +18,7 @@
     "deployFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployFactory.js",
     "deployRouter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRouter.js",
     "deployFarm:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_farm.js",
+    "deployFarm:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_farm.js",
     "deployCNTStaker:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_cnt_staker.js",
     "deployCNTStaker:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_cnt_staker.js",
     "deployConverter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_converter.js",
