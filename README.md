@@ -32,9 +32,9 @@ npm run deployRouter:test
 
 - CryptionNetworkToken CNT on Ethereum ( L1 ): https://etherscan.io/address/0x429876c4a6f89fb470e92456b8313879df98b63c
 
-- L1Burner : https://etherscan.io/address/0xe0ece8cca8ce72d2ae862b6c564373268e2a80e9
+- L1Burner : https://etherscan.io/address/0x937b524174b24f0884f9fef167d6f9cdf553b371
 
-- L2Burner: https://polygonscan.com/address/0xe0eCe8cCA8ce72d2AE862b6C564373268e2A80E9
+- L2Burner: https://polygonscan.com/address/0x937b524174B24f0884f9FEf167d6f9cdF553B371
 
 - PolydexFactory: https://polygonscan.com/address/0x5bdd1cd910e3307582f213b33699e676e61dead9
 
