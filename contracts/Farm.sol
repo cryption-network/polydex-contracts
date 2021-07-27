@@ -149,11 +149,13 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
         external
         onlyOwner
     {
+        massUpdatePools();
         BONUS_MULTIPLIER = multiplierNumber;
         emit BonusMultiplierUpdated(BONUS_MULTIPLIER);
     }
 
     function updateBlockRate(uint256 _cntPerBlock) external onlyOwner {
+        massUpdatePools();
         cntPerBlock = _cntPerBlock;
         emit BlockRateUpdated(cntPerBlock);
     }
