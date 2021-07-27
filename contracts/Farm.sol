@@ -8,6 +8,16 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface IRewardManager {
+    function handleRewardsForUser(
+        address user,
+        uint256 rewardAmount,
+        uint256 timestamp,
+        uint256 pid,
+        uint256 rewardDebt
+    ) external;
+}
+
 // Farm is the major distributor of CNT to the community. He gives juicy CNT rewards as per user's stake.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
@@ -79,6 +89,11 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     // The block number when CNT mining starts.
     uint256 public startBlock;
 
+    //Trigger for RewardManager mode
+    bool public isRewardManagerEnabled;
+
+    address public rewardManager;
+
     event PoolAddition(
         uint256 indexed pid,
         uint256 allocPoint,
@@ -129,6 +144,8 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
         feeAddress = _feeAddress;
         startBlock = _startBlock;
         bonusEndBlock = _bonusEndBlock;
+        isRewardManagerEnabled = false;
+        rewardManager = address(0);
     }
 
     modifier validatePoolByPid(uint256 _pid) {
@@ -149,13 +166,29 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
         external
         onlyOwner
     {
+        massUpdatePools();
         BONUS_MULTIPLIER = multiplierNumber;
         emit BonusMultiplierUpdated(BONUS_MULTIPLIER);
     }
 
     function updateBlockRate(uint256 _cntPerBlock) external onlyOwner {
+        massUpdatePools();
         cntPerBlock = _cntPerBlock;
         emit BlockRateUpdated(cntPerBlock);
+    }
+
+    function updateRewardManagerMode(bool _isRewardManagerEnabled)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        isRewardManagerEnabled = _isRewardManagerEnabled;
+    }
+
+    function updateRewardManager(address _rewardManager) external onlyOwner {
+        require(_rewardManager != address(0), "Reward Manager address is zero");
+        massUpdatePools();
+        rewardManager = _rewardManager;
     }
 
     function poolLength() external view returns (uint256) {
@@ -316,10 +349,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     }
 
     // Update reward variables of the given pool to be up-to-date.
-    function updatePool(uint256 _pid)
-        public
-        validatePoolByPid(_pid)
-    {
+    function updatePool(uint256 _pid) public validatePoolByPid(_pid) {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
             return;
@@ -551,7 +581,18 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
                 );
 
                 // send rewards
-                safeCNTTransfer(_withdrawer, totalRewards);
+                if (isRewardManagerEnabled == true) {
+                    safeCNTTransfer(rewardManager, totalRewards);
+                    IRewardManager(rewardManager).handleRewardsForUser(
+                        _withdrawer,
+                        totalRewards,
+                        block.timestamp,
+                        _pid,
+                        user.rewardDebt
+                    );
+                } else {
+                    safeCNTTransfer(_withdrawer, totalRewards);
+                }
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
