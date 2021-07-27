@@ -8,7 +8,7 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface RewardManager {
+interface IRewardManager {
     function handleRewardsForUser(
         address user,
         uint256 rewardAmount,
@@ -188,7 +188,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     function updateRewardManager(address _rewardManager) external onlyOwner {
         massUpdatePools();
         rewardManager = _rewardManager;
-    } 
+    }
 
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
@@ -582,6 +582,13 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
                 // send rewards
                 if (isRewardManagerEnabled == true) {
                     safeCNTTransfer(rewardManager, totalRewards);
+                    IRewardManager(rewardManager).handleRewardsForUser(
+                        _withdrawer,
+                        totalRewards,
+                        block.timestamp,
+                        _pid,
+                        user.rewardDebt
+                    );
                 }
                 safeCNTTransfer(_withdrawer, totalRewards);
             }
