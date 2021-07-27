@@ -186,6 +186,7 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
     }
 
     function updateRewardManager(address _rewardManager) external onlyOwner {
+        require(_rewardManager != address(0), "Reward Manager address is zero");
         massUpdatePools();
         rewardManager = _rewardManager;
     }
@@ -589,8 +590,9 @@ contract Farm is Ownable, ContextMixin, NativeMetaTransaction, ReentrancyGuard {
                         _pid,
                         user.rewardDebt
                     );
+                } else {
+                    safeCNTTransfer(_withdrawer, totalRewards);
                 }
-                safeCNTTransfer(_withdrawer, totalRewards);
             }
         } else if (pending > 0) {
             user.rewardLockedUp = user.rewardLockedUp.add(pending);
