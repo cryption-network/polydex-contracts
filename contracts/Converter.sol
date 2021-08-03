@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -7,7 +8,7 @@ import "./polydex/interfaces/IPolydexPair.sol";
 import "./polydex/interfaces/IPolydexFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
+import "./polydex/interfaces/IPolydexRouter.sol";
 
 // Converter is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
 // This contract handles "serving up" rewards for xCNT holders & also burning some by trading tokens collected from fees for CNT.
@@ -15,8 +16,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract Converter is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    
 
     IPolydexFactory public factory;
+    IPolydexRouter public router;
     address public cntStaker;
     // The CNT TOKEN!
     IERC20 public cnt;
@@ -43,7 +46,8 @@ contract Converter is Ownable, ReentrancyGuard {
         uint16 _burnAllocation,
         uint16 _stakersAllocation,
         uint16 _platformFeesAllocation,
-        address _platformAddr
+        address _platformAddr,
+        IPolydexRouter _router
     ) {
         factory = _factory;
         cnt = _cnt;
@@ -56,11 +60,18 @@ contract Converter is Ownable, ReentrancyGuard {
             _stakersAllocation,
             _platformFeesAllocation
         );
+        router = _router; //hardcode address
     }
 
     function updateL2Burner(address _l2Burner) external onlyOwner {
         require(_l2Burner != address(0), "No zero address");
         l2Burner = _l2Burner;
+    }
+
+
+    function updateRouter(IPolydexRouter _router) external onlyOwner {
+        require(address(_router) != address(0), "No zero address");
+        router = _router;
     }
 
     // Set the allocation to handle accumulated swap fees
@@ -109,6 +120,68 @@ contract Converter is Ownable, ReentrancyGuard {
         );
         totalCNTAccumulated = 0;
     }
+
+    function convertLP(address token0, address token1, address[] calldata pathForToken0, address[] calldata pathForToken1) external nonReentrant() {
+        // At least we try to make front-running harder to do.
+        require(msg.sender == tx.origin, "do not convert from contract");
+        IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
+
+        require(address(pair) != address(0), "Invalid pair");
+
+        _safeTransfer(
+            address(pair),
+            address(pair),
+            pair.balanceOf(address(this))
+        );
+
+        pair.burn(address(this));
+        // swap everything to CNT
+        _swaptoCNT(token0, pathForToken0);
+        _swaptoCNT(token1, pathForToken1);
+
+    }
+
+    function convertToken(address token, address[] calldata path) external nonReentrant() {
+        // At least we try to make front-running harder to do.
+        require(msg.sender == tx.origin, "do not convert from contract");
+        require(address(token) != address(0), "Invalid token address");
+        _swaptoCNT(token, path);
+
+    }
+
+
+    function _swaptoCNT(address token, address[] calldata path)internal {
+        uint amountIn = IERC20(token).balanceOf(address(this));
+        require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
+        uint amountOutMin = 1;
+        uint deadline = block.timestamp + 1;
+        router.swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+          uint256 cntAmount = IERC20(cnt).balanceOf(address(this));
+            _safeTransfer(
+                address(cnt),
+                cntStaker,
+                cntAmount.mul(stakersAllocation).div(1000)
+            );
+            _safeTransfer(
+                address(cnt),
+                l2Burner,
+                cntAmount.mul(burnAllocation).div(1000)
+            );
+            _safeTransfer(
+                address(cnt),
+                platformAddr,
+                cntAmount.mul(platformFeesAllocation).div(1000)
+            );
+            totalCNTAccumulated += cntAmount;
+            emit CNTConverted(
+            totalCNTAccumulated.mul(stakersAllocation).div(1000),
+            totalCNTAccumulated.mul(burnAllocation).div(1000),
+            totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
+        );
+        totalCNTAccumulated = 0;
+    }
+
+
 
     // Converts token passed as an argument to WMATIC
     function _toWMATIC(address token) internal returns (uint256) {
