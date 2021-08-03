@@ -25,11 +25,11 @@ contract RewardManager is Ownable, ReentrancyGuard
     //Pre mature penalty in percentage
     uint256 public preMaturePenalty;
     
-    /// @notice start of vesting period as a timestamp
-    uint256 public start;
+    /// @notice start of Distribution phase as a timestamp
+    uint256 public startDistribution;
 
-    /// @notice end of vesting period as a timestamp
-    uint256 public end;
+    /// @notice end of accumulation phase as a timestamp
+    uint256 public endAccumulation;
     
     //Cryption Network Token (cnt) token address
     IERC20 public cnt;
@@ -50,10 +50,9 @@ contract RewardManager is Ownable, ReentrancyGuard
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
-     * @param _start start timestamp
-     * @param _end end timestamp
+     * @param _startDistribution start timestamp
+     * @param _endAccumulation end timestamp
      * @param _farmContract Address of Farimg contract
-     * @param _vaultStrategy Address of Vault Startegy contract that would be whitelisted from vesting
      * @param _upfrontUnlock Upfront unlock percentage
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
      * @param _burner Burner for collecting preMaturePenalty
@@ -61,20 +60,18 @@ contract RewardManager is Ownable, ReentrancyGuard
      */
     constructor (
         IERC20 _cnt,
-        uint256 _start,
-        uint256 _end,
+        uint256 _startDistribution,
+        uint256 _endAccumulation,
         address _farmContract,
-        address _vaultStrategy,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         address _burner)
     {
-        require(_end > _start, "end time should be greater than start");
+        require(_endAccumulation > _startDistribution, "end time should be greater than start");
         cnt = _cnt;
-        start = _start;
-        end = _end;
+        startDistribution = _startDistribution;
+        endAccumulation = _endAccumulation;
         farmContract = _farmContract;
-        vaultStrategyContract = _vaultStrategy;
         upfrontUnlock = _upfrontUnlock;
         preMaturePenalty = _preMaturePenalty;
         l2Burner = _burner;
@@ -84,9 +81,9 @@ contract RewardManager is Ownable, ReentrancyGuard
         return block.timestamp;
     }
     
-    function changeVestingStartTime(uint256 _updatedStartTime) external onlyOwner{
-        require(start > _getNow(), "Start time should be of future");
-        start = _updatedStartTime;
+    function changeDistributionStartTime(uint256 _updatedStartTime) external onlyOwner{
+        require(startDistribution > _getNow(), "Start time should be of future");
+        startDistribution = _updatedStartTime;
     }
     
     function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external onlyOwner{
@@ -114,7 +111,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function vest(address _user, uint256 _amount) internal {
-        require(_getNow() < start, "Cannot vest");
+        require(_getNow() < startDistribution, "Cannot vest");
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
@@ -142,14 +139,10 @@ contract RewardManager is Ownable, ReentrancyGuard
 
     function _availableDrawDownAmount(address _user) internal view returns (uint256) {
         uint256 currentTime = _getNow();
-        if (currentTime < start) {
+        if (currentTime < startDistribution) {
             return 0;
-        } else if (currentTime >= end) {
+        } else if (currentTime >= endAccumulation) {
             return vestedAmount[_user].sub(totalDrawn[_user]);
-        } else {
-            uint256 elapsedTime = currentTime.sub(start);
-            uint256 _totalVestingTime = end.sub(start);
-            return vestedAmount[_user].mul(elapsedTime).div(_totalVestingTime).sub(totalDrawn[_user]);
         }
     }
     
@@ -159,7 +152,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
     function drawDown() external nonReentrant returns (bool) {
-        require(_getNow() > start, "Still vesting period");
+        require(_getNow() >= startDistribution, "Distribution period not yet started");
         return _drawDown(msg.sender);
     }
 
