@@ -16,6 +16,9 @@ contract RewardManager is Ownable, ReentrancyGuard
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
     mapping (address => bool) excludedAddresses;
     
+    // preMaturePenalty will be sent to burner address
+    address public l2Burner;
+    
     //Upfront rewards unlock in percentage
     uint256 public upfrontUnlock;
     
@@ -53,6 +56,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @param _vaultStrategy Address of Vault Startegy contract that would be whitelisted from vesting
      * @param _upfrontUnlock Upfront unlock percentage
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
+     * @param _burner Burner for collecting preMaturePenalty
      * @dev deployer of contract on constructor is set as owner
      */
     constructor (
@@ -62,7 +66,8 @@ contract RewardManager is Ownable, ReentrancyGuard
         address _farmContract,
         address _vaultStrategy,
         uint256 _upfrontUnlock,
-        uint256 _preMaturePenalty)
+        uint256 _preMaturePenalty,
+        address _burner)
     {
         require(_end > _start, "end time should be greater than start");
         cnt = _cnt;
@@ -72,6 +77,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         vaultStrategyContract = _vaultStrategy;
         upfrontUnlock = _upfrontUnlock;
         preMaturePenalty = _preMaturePenalty;
+        l2Burner = _burner;
     }
         
     function _getNow() internal view returns (uint256) {
