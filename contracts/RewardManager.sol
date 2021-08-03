@@ -13,8 +13,8 @@ contract RewardManager is Ownable, ReentrancyGuard
     
     address public farmContract;
     
-    // Call from vault strategy contract will be whitelisted & rewards harvested from farm will not be harvested
-    address public vaultStrategyContract;
+    // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
+    mapping (address => bool) excludedAddresses;
     
     //Upfront rewards unlock in percentage
     uint256 public upfrontUnlock;
@@ -96,9 +96,14 @@ contract RewardManager is Ownable, ReentrancyGuard
     ) external {
         require(msg.sender == farmContract,"Not Farm Contract");
         if(rewardAmount > 0){
-            uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(1e18);
-            cnt.safeTransfer(user, upfrontAmount);
-            vest(user, rewardAmount.sub(upfrontAmount));
+            if(excludedAddresses[user]){
+                cnt.safeTransfer(user, rewardAmount);
+            }
+            else{
+                uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(1e18);
+                cnt.safeTransfer(user, upfrontAmount);
+                vest(user, rewardAmount.sub(upfrontAmount));
+            }
         }
     }
     
