@@ -42,10 +42,13 @@ contract RewardManager is Ownable, ReentrancyGuard
 
     
     /// @notice event emitted when a vesting schedule is created
-    event Vested(address indexed _beneficiary, uint256 value);
+    event Vested(address indexed _beneficiary, uint256 indexed value);
     
     /// @notice event emitted when a successful drawn down of vesting tokens is made
     event DrawDown(address indexed _beneficiary, uint256 indexed _amount);
+    
+     /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
+    event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userWithdrawn);
     
     /**
      * @notice Construct a new Reward Manager contract
