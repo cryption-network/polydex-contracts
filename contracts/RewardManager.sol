@@ -159,6 +159,36 @@ contract RewardManager is Ownable, ReentrancyGuard
         require(_getNow() >= startDistribution, "Distribution period not yet started");
         return _drawDown(msg.sender);
     }
+    
+    /**
+     * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     */
+    function preMatureDraw() external nonReentrant returns (bool) {
+        if(_getNow() <= endAccumulation){
+            address _beneficiary = msg.sender;
+            uint256 userTotalVested = vestedAmount[_beneficiary];
+            require(userTotalVested > 0, "No vesting found");
+            uint256 burnAmount = vestedAmount[_beneficiary].mul(preMaturePenalty).div(1e18);
+            totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(userTotalVested);
+            
+            // Safety measure - this should never trigger
+            require(
+                totalDrawn[_beneficiary] <= userTotalVested,
+                "Safety Mechanism - Drawn exceeded Amount Vested"
+            );
+            
+            cnt.safeTransfer(l2Burner, burnAmount);
+            cnt.safeTransfer(_beneficiary, userTotalVested.sub(burnAmount));
+            
+            emit PreMatureDrawn(_beneficiary, burnAmount, userTotalVested.sub(burnAmount));
+    
+            return true;
+        }
+        else if (_getNow() >= startDistribution){
+            return _drawDown(msg.sender);
+        }
+    }
 
     
     function _drawDown(address _beneficiary) internal returns (bool) {
