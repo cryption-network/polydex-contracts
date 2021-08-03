@@ -127,6 +127,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @dev Must be called directly by the beneficiary assigned the tokens in the schedule
      * @return Total vested amount for user
      * @return total token drawn by user
+     * @return token available to be claimed
      * @return tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
