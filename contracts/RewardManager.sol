@@ -135,7 +135,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @return tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
-    external view
+    public view
     returns (uint256 , uint256 , uint256 , uint256 ) {
         return (
         vestedAmount[_user],
