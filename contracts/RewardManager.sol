@@ -14,7 +14,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     address public farmContract;
     
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
-    mapping (address => bool) excludedAddresses;
+    mapping (address => bool) public excludedAddresses;
     
     // preMaturePenalty will be sent to burner address
     address public l2Burner;
@@ -91,6 +91,10 @@ contract RewardManager is Ownable, ReentrancyGuard
     
     function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external onlyOwner{
         upfrontUnlock = _newUpfrontUnlock;
+    }
+
+    function whitelistAddress(address _excludeAddress) external onlyOwner{
+        excludedAddresses[_excludeAddress] = true;
     }
         
     function handleRewardsForUser(
