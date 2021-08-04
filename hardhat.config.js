@@ -5,11 +5,25 @@ require("solidity-coverage");
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const MATIC_NODE_API = process.env.MATIC_NODE_API;
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+
+task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
+  const accounts = await hre.ethers.getSigners();
+
+  for (const account of accounts) {
+    console.log(account.address);
+  }
+});
 
 module.exports = {
   networks: {
     localhost: {
       url: "http://localhost:8545", // uses account 0 of the hardhat node to deploy
+    },
+    hardhat: {
+      forking: {
+        url: `https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`
+      }
     },
     matic: {
       url: MATIC_NODE_API,
