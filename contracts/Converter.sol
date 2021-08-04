@@ -149,6 +149,7 @@ contract Converter is Ownable, ReentrancyGuard {
     }
 
     function _swaptoCNT(address token, address[] calldata path) internal {
+        //the path should always have CNT otherwise it will convert to the token added which would lead to loss of funds.
         uint amountIn = IERC20(token).balanceOf(address(this));
         require(amountIn > 0, 'Contract should have token balance greater than 0');
         require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
