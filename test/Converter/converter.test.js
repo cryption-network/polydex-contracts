@@ -70,13 +70,19 @@ describe("Converter contract", function () {
     const token2 = await ethers.getContractFactory(
       "ERC20Mock"
     );
+    const token3 = await ethers.getContractFactory(
+      "ERC20Mock"
+    );
     this.token1Instance = await token1.deploy("Token A", "ABC", ERC20TokensSupply);
     this.token2Instance = await token2.deploy("Token B", "XYZ", ERC20TokensSupply);
+    this.token3Instance = await token3.deploy("Token C", "PQR", ERC20TokensSupply);
     await this.token1Instance.deployed();
     await this.token2Instance.deployed();
+    await this.token3Instance.deployed();
 
     await this.token1Instance.connect(this.signer).approve(this.polydexRouterInstance.address, BigNumber.from(String(ERC20TokensSupply)));
     await this.token2Instance.connect(this.signer).approve(this.polydexRouterInstance.address, BigNumber.from(String(ERC20TokensSupply)));
+    await this.token3Instance.connect(this.signer).approve(this.polydexRouterInstance.address, BigNumber.from(String(ERC20TokensSupply)));
     await this.cntTokenInstance.connect(this.signer).approve(this.polydexRouterInstance.address, BigNumber.from(String(ERC20TokensSupply)));
     await this.wmaticTokenInstance.connect(this.signer).approve(this.polydexRouterInstance.address, BigNumber.from(String(ERC20TokensSupply)));
 
@@ -114,7 +120,7 @@ describe("Converter contract", function () {
     );
 
     await this.polydexRouterInstance.connect(this.signer).addLiquidity(
-      this.wmaticTokenInstance.address,
+      this.token3Instance.address,
       this.cntTokenInstance.address,
       BigNumber.from("1000"),
       BigNumber.from("10000"),
@@ -131,6 +137,21 @@ describe("Converter contract", function () {
       this.signer.address,
       MaxUint256,
     );
+
+    await this.polydexRouterInstance.connect(this.signer).addLiquidity(
+      this.token1Instance.address,
+      this.token2Instance.address,
+      BigNumber.from("1000"),
+      BigNumber.from("1000"),
+      0,
+      0,
+      this.signer.address,
+      MaxUint256,
+    );
+
+    // const pairAddress = this.polydexFactoryInstance.getPair(this.token1Instance.address, this.token2Instance.address);
+    // const polydexERC20Instance = this.PolydexERC20.attach(pairAddress);
+    // console.log(String(await polydexERC20Instance.balanceOf(this.converterInstance.address)));
   });
 
   it("should set correct state variables", async function () {
@@ -203,8 +224,8 @@ describe("Converter contract", function () {
    });
 
   it("should correctly call convertToken function and correctly allocate CNT tokens", async function () { 
-    await this.wmaticTokenInstance.connect(this.signer).transfer(this.converterInstance.address, BigNumber.from("100"));
-    const tx = await this.converterInstance.connect(this.signer).convertToken(this.wmaticTokenInstance.address, [this.wmaticTokenInstance.address,this.cntTokenInstance.address]);
+    await this.token3Instance.connect(this.signer).transfer(this.converterInstance.address, BigNumber.from("100"));
+    const tx = await this.converterInstance.connect(this.signer).convertToken(this.token3Instance.address, [this.token3Instance.address,this.cntTokenInstance.address]);
     const txReceipt = await tx.wait();
     const cntConvertedEventLogs = txReceipt.events?.filter((x) => {return x.event == "CNTConverted"});
     expect(cntConvertedEventLogs.length).to.be.greaterThan(0)
@@ -219,4 +240,3 @@ describe("Converter contract", function () {
    });
 
   });
-  
