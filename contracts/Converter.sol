@@ -138,7 +138,7 @@ contract Converter is Ownable, ReentrancyGuard {
         // swap everything to CNT
         _swaptoCNT(token0, pathForToken0);
         _swaptoCNT(token1, pathForToken1);
-
+        _allocateCNT();
     }
 
     function convertToken(address token, address[] calldata path) external nonReentrant() {
@@ -146,42 +146,41 @@ contract Converter is Ownable, ReentrancyGuard {
         require(msg.sender == tx.origin, "do not convert from contract");
         require(address(token) != address(0), "Invalid token address");
         _swaptoCNT(token, path);
-
+        _allocateCNT();
     }
 
-
-    function _swaptoCNT(address token, address[] calldata path)internal {
+    function _swaptoCNT(address token, address[] calldata path) internal {
         uint amountIn = IERC20(token).balanceOf(address(this));
         require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
         uint amountOutMin = 1;
         uint deadline = block.timestamp + 1;
         router.swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
-          uint256 cntAmount = IERC20(cnt).balanceOf(address(this));
-            _safeTransfer(
-                address(cnt),
-                cntStaker,
-                cntAmount.mul(stakersAllocation).div(1000)
-            );
-            _safeTransfer(
-                address(cnt),
-                l2Burner,
-                cntAmount.mul(burnAllocation).div(1000)
-            );
-            _safeTransfer(
-                address(cnt),
-                platformAddr,
-                cntAmount.mul(platformFeesAllocation).div(1000)
-            );
-            totalCNTAccumulated += cntAmount;
-            emit CNTConverted(
+    }
+
+    function _allocateCNT() internal {
+        totalCNTAccumulated = IERC20(cnt).balanceOf(address(this));
+        _safeTransfer(
+            address(cnt),
+            cntStaker,
+            totalCNTAccumulated.mul(stakersAllocation).div(1000)
+        );
+        _safeTransfer(
+            address(cnt),
+            l2Burner,
+            totalCNTAccumulated.mul(burnAllocation).div(1000)
+        );
+        _safeTransfer(
+            address(cnt),
+            platformAddr,
+            totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
+        );
+        emit CNTConverted(
             totalCNTAccumulated.mul(stakersAllocation).div(1000),
             totalCNTAccumulated.mul(burnAllocation).div(1000),
             totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
         );
         totalCNTAccumulated = 0;
     }
-
-
 
     // Converts token passed as an argument to WMATIC
     function _toWMATIC(address token) internal returns (uint256) {
