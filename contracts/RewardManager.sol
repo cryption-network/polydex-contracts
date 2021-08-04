@@ -48,7 +48,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     event DrawDown(address indexed _beneficiary, uint256 indexed _amount);
     
      /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
-    event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userWithdrawn);
+    event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
     
     /**
      * @notice Construct a new Reward Manager contract
@@ -176,19 +176,28 @@ contract RewardManager is Ownable, ReentrancyGuard
     function preMatureDraw() external nonReentrant returns (bool) {
             require(_getNow() > startAccumulation, "Distribution period not yet started");
             address _beneficiary = msg.sender;
-            _drawDown(_beneficiary);
+            require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
+           
+            uint256 drawn = _drawDown(_beneficiary);
             (,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
-            totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
+            uint256 effectiveAmount = vestedAmount[_beneficiary].sub(burnAmount).sub(drawn);
 
+            totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(effectiveAmount).add(burnAmount);
+            // Safety measure - this should never trigger
+            require(
+                totalDrawn[_beneficiary] <= vestedAmount[_beneficiary],
+                "PreMature Draw exceeded Amount Vested"
+            );
+            cnt.safeTransfer(_beneficiary, effectiveAmount);
             cnt.safeTransfer(l2Burner, burnAmount);
-            emit PreMatureDrawn(_beneficiary, burnAmount, vestedAmount[_beneficiary].sub(burnAmount));
+            emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
     
             return true;
     }
 
     
-    function _drawDown(address _beneficiary) internal returns (bool) {
+    function _drawDown(address _beneficiary) internal returns (uint256) {
         require(vestedAmount[_beneficiary] > 0, "No vesting found");
 
         uint256 amount = _availableDrawDownAmount(_beneficiary);
@@ -208,7 +217,7 @@ contract RewardManager is Ownable, ReentrancyGuard
 
         emit DrawDown(_beneficiary, amount);
 
-        return true;
+        return amount;
     }
 
 }
