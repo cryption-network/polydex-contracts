@@ -59,9 +59,11 @@ describe("Converter contract", function () {
       ConstructorParams.PLATFORM_FEES_ALLOCATION,
       this.platformAddr);
     await this.converterInstance.deployed();
-    await this.polydexFactoryInstance.connect(this.signer).setFeeTo(this.converterInstance.address);
     console.log("polydexRouterInstance deployed at " + this.polydexRouterInstance.address);
     console.log("converterInstance deployed at " + this.converterInstance.address);
+
+    await this.polydexFactoryInstance.connect(this.signer).setFeeTo(this.converterInstance.address);
+
     const token1 = await ethers.getContractFactory(
       "ERC20Mock"
     );
