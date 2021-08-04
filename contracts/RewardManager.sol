@@ -25,8 +25,8 @@ contract RewardManager is Ownable, ReentrancyGuard
     //Pre mature penalty in percentage
     uint256 public preMaturePenalty;
     
-    /// @notice start of Distribution phase as a timestamp
-    uint256 public startDistribution;
+    /// @notice start of Accumulation phase as a timestamp
+    uint256 public startAccumulation;
 
     /// @notice end of accumulation phase as a timestamp
     uint256 public endAccumulation;
@@ -53,7 +53,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
-     * @param _startDistribution start timestamp
+     * @param _startAccumulation start timestamp
      * @param _endAccumulation end timestamp
      * @param _farmContract Address of Farimg contract
      * @param _upfrontUnlock Upfront unlock percentage
@@ -63,16 +63,16 @@ contract RewardManager is Ownable, ReentrancyGuard
      */
     constructor (
         IERC20 _cnt,
-        uint256 _startDistribution,
+        uint256 _startAccumulation,
         uint256 _endAccumulation,
         address _farmContract,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         address _burner)
     {
-        require(_endAccumulation > _startDistribution, "end time should be greater than start");
+        require(_endAccumulation > _startAccumulation, "end time should be greater than start");
         cnt = _cnt;
-        startDistribution = _startDistribution;
+        startAccumulation = _startAccumulation;
         endAccumulation = _endAccumulation;
         farmContract = _farmContract;
         upfrontUnlock = _upfrontUnlock;
@@ -85,8 +85,8 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function changeDistributionStartTime(uint256 _updatedStartTime) external onlyOwner{
-        require(startDistribution > _getNow(), "Start time should be of future");
-        startDistribution = _updatedStartTime;
+        require(startAccumulation > _getNow(), "Start time should be of future");
+        startAccumulation = _updatedStartTime;
     }
     
     function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external onlyOwner{
@@ -114,7 +114,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function vest(address _user, uint256 _amount) internal {
-        require(_getNow() < startDistribution, "Cannot vest");
+        require(_getNow() < startAccumulation, "Cannot vest");
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
@@ -156,7 +156,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
     function drawDown() external nonReentrant returns (bool) {
-        require(_getNow() >= startDistribution, "Distribution period not yet started");
+        require(_getNow() > startAccumulation, "Distribution period not yet started");
         return _drawDown(msg.sender);
     }
     
