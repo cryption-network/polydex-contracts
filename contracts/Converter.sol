@@ -93,33 +93,7 @@ contract Converter is Ownable, ReentrancyGuard {
         require(_newCntStaker != address(0), "Address cant be zero Address");
         cntStaker = _newCntStaker;
     }
-
-    function convert(address token0, address token1) external nonReentrant() {
-        // At least we try to make front-running harder to do.
-        require(msg.sender == tx.origin, "do not convert from contract");
-        IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
-
-        require(address(pair) != address(0), "Invalid pair");
-
-        _safeTransfer(
-            address(pair),
-            address(pair),
-            pair.balanceOf(address(this))
-        );
-
-        pair.burn(address(this));
-        // First we convert everything to WMATIC
-        uint256 wmaticAmount = _toWMATIC(token0) + _toWMATIC(token1);
-        // Then we convert the WMATIC to CryptionToken
-        _toCNT(wmaticAmount);
-        emit CNTConverted(
-            totalCNTAccumulated.mul(stakersAllocation).div(1000),
-            totalCNTAccumulated.mul(burnAllocation).div(1000),
-            totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
-        );
-        totalCNTAccumulated = 0;
-    }
-
+    
     function convertLP(address token0, address[] calldata pathForToken0, address token1, address[] calldata pathForToken1) external nonReentrant() {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
