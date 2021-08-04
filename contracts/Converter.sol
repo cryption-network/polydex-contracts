@@ -120,7 +120,7 @@ contract Converter is Ownable, ReentrancyGuard {
         totalCNTAccumulated = 0;
     }
 
-    function convertLP(address token0, address token1, address[] calldata pathForToken0, address[] calldata pathForToken1) external nonReentrant() {
+    function convertLP(address token0, address[] calldata pathForToken0, address token1, address[] calldata pathForToken1) external nonReentrant() {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
@@ -150,6 +150,7 @@ contract Converter is Ownable, ReentrancyGuard {
 
     function _swaptoCNT(address token, address[] calldata path) internal {
         uint amountIn = IERC20(token).balanceOf(address(this));
+        require(amountIn > 0, 'Contract should have token balance greater than 0');
         require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
         uint amountOutMin = 1;
         uint deadline = block.timestamp + 1;
