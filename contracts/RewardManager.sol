@@ -89,7 +89,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         return block.timestamp;
     }
     
-    function changeDistributionStartTime(uint256 _updatedStartTime) external onlyOwner{
+    function changeAccumulationStartTime(uint256 _updatedStartTime) external onlyOwner{
         require(startAccumulation > _getNow(), "Start time should be of future");
         startAccumulation = _updatedStartTime;
     }
