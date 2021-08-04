@@ -46,8 +46,7 @@ contract Converter is Ownable, ReentrancyGuard {
         uint16 _burnAllocation,
         uint16 _stakersAllocation,
         uint16 _platformFeesAllocation,
-        address _platformAddr,
-        IPolydexRouter _router
+        address _platformAddr
     ) {
         factory = _factory;
         cnt = _cnt;
@@ -60,7 +59,7 @@ contract Converter is Ownable, ReentrancyGuard {
             _stakersAllocation,
             _platformFeesAllocation
         );
-        router = _router; //hardcode address
+        router = IPolydexRouter(0xBd13225f0a45BEad8510267B4D6a7c78146Be459);
     }
 
     function updateL2Burner(address _l2Burner) external onlyOwner {
