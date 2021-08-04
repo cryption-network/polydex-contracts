@@ -146,7 +146,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         vestedAmount[_user],
         totalDrawn[_user],
         _availableDrawDownAmount(_user),
-        vestedAmount[_user].sub(totalDrawn[_user])
+        _remainingBalance(_user)
         );
     }
 
@@ -155,13 +155,17 @@ contract RewardManager is Ownable, ReentrancyGuard
         if (currentTime < startAccumulation) {
             return 0;
         } else if (currentTime >= endAccumulation) {
-            return vestedAmount[_user].sub(totalDrawn[_user]);
+            return _remainingBalance(_user);
         }
         else {
             uint256 elapsedTime = currentTime.sub(startAccumulation);
             uint256 _totalVestingTime = endAccumulation.sub(startAccumulation);
             return vestedAmount[_user].mul(elapsedTime).div(_totalVestingTime).sub(totalDrawn[_user]);
         }
+    }
+
+    function _remainingBalance(address _user) internal view returns (uint256) {
+        return vestedAmount[_user].sub(totalDrawn[_user]);
     }
     
     
