@@ -50,6 +50,11 @@ contract RewardManager is Ownable, ReentrancyGuard
      /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
     event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
     
+    modifier isVestingPeriod() {
+        require(_getNow() > startAccumulation, "Vesting not yet started");
+        _;
+    }
+
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
@@ -164,8 +169,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Draws down any vested tokens due
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function drawDown() external nonReentrant returns (bool) {
-        require(_getNow() > startAccumulation, "Distribution period not yet started");
+    function drawDown() external nonReentrant isVestingPeriod returns (uint256) {
         return _drawDown(msg.sender);
     }
     
@@ -173,8 +177,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function preMatureDraw() external nonReentrant returns (bool) {
-            require(_getNow() > startAccumulation, "Distribution period not yet started");
+    function preMatureDraw() external nonReentrant isVestingPeriod returns (bool) {
             address _beneficiary = msg.sender;
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
