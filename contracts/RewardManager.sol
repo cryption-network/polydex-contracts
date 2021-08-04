@@ -110,7 +110,7 @@ contract RewardManager is Ownable, ReentrancyGuard
                 cnt.safeTransfer(user, rewardAmount);
             }
             else{
-                uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(1e18);
+                uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(1000);
                 cnt.safeTransfer(user, upfrontAmount);
                 vest(user, rewardAmount.sub(upfrontAmount));
             }
