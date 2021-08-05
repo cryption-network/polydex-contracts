@@ -19,10 +19,10 @@ contract RewardManager is Ownable, ReentrancyGuard
     // preMaturePenalty will be sent to burner address
     address public l2Burner;
     
-    //Upfront rewards unlock in percentage
+    //Upfront rewards unlock in percentage. This number is later divided by 1000 for calculations.
     uint256 public upfrontUnlock;
     
-    //Pre mature penalty in percentage
+    //Pre mature penalty in percentage. This number is later divided by 1000 for calculations.
     uint256 public preMaturePenalty;
     
     /// @notice start of Accumulation phase as a timestamp
