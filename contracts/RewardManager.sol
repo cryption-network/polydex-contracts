@@ -55,6 +55,11 @@ contract RewardManager is Ownable, ReentrancyGuard
         _;
     }
 
+    modifier checkPercentages(uint256 _upfrontUnlock, uint256 _preMaturePenalty) {
+        require(_upfrontUnlock.add(_preMaturePenalty) <= 1000, "Invalid Percentages");
+        _;
+    }
+
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
@@ -73,7 +78,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         address _farmContract,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
-        address _burner)
+        address _burner) checkPercentages(_upfrontUnlock, _preMaturePenalty)
     {
         require(_endAccumulation > _startAccumulation, "end time should be greater than start");
         cnt = _cnt;
@@ -88,13 +93,24 @@ contract RewardManager is Ownable, ReentrancyGuard
     function _getNow() internal view returns (uint256) {
         return block.timestamp;
     }
-    
-    function changeAccumulationStartTime(uint256 _updatedStartTime) external onlyOwner{
-        require(startAccumulation > _getNow(), "Start time should be of future");
-        startAccumulation = _updatedStartTime;
+
+    function updatePreMaturePenalty(uint256 _newpreMaturePenalty) external 
+    checkPercentages(upfrontUnlock, _newpreMaturePenalty) 
+    onlyOwner
+    {
+        preMaturePenalty = _newpreMaturePenalty;
     }
     
-    function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external onlyOwner{
+    function changeAccumulationTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external onlyOwner{
+        require(startAccumulation > _getNow(), "Start time should be of future");
+        startAccumulation = _updatedStartTime;
+        endAccumulation = _updatedEndTime;
+    }
+    
+    function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external 
+    checkPercentages(_newUpfrontUnlock, preMaturePenalty) 
+    onlyOwner
+    {
         upfrontUnlock = _newUpfrontUnlock;
     }
 
