@@ -23,6 +23,8 @@
     "deployCNTStaker:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_cnt_staker.js",
     "deployConverter:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_converter.js",
     "deployConverter:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_converter.js",
+    "deployConverterV2:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_converterV2.js",
+    "deployConverterV2:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_converterV2.js",
     "deployStakingPool:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_staking_pool.js",
     "deployStakingPool:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_staking_pool.js"
   },
