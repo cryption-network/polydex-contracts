@@ -45,7 +45,7 @@ describe("ConverterV2 contract", function () {
       this.wmaticTokenInstance.address
       );
     await this.polydexRouterInstance.deployed();
-    this.converterInstance = await ConverterV2.deploy(
+    this.converterV2Instance = await ConverterV2.deploy(
       this.polydexFactoryInstance.address,
       ConstructorParams.CNT_STAKER,
       this.cntTokenInstance.address,
@@ -55,15 +55,15 @@ describe("ConverterV2 contract", function () {
       ConstructorParams.STAKERS_ALLOCATION,
       ConstructorParams.PLATFORM_FEES_ALLOCATION,
       this.platformAddr);
-    await this.converterInstance.deployed();
+    await this.converterV2Instance.deployed();
     console.log("cntTokenInstance deployed at " + this.cntTokenInstance.address);
     console.log("wmaticTokenInstance deployed at " + this.wmaticTokenInstance.address);
     console.log("polydexFactoryInstance deployed at " + this.polydexFactoryInstance.address);
     console.log("polydexRouterInstance deployed at " + this.polydexRouterInstance.address);
-    console.log("converterInstance deployed at " + this.converterInstance.address);
+    console.log("converterV2Instance deployed at " + this.converterV2Instance.address);
 
     //feeTo Set to ConverterV2 Contract
-    await this.polydexFactoryInstance.connect(this.signer).setFeeTo(this.converterInstance.address);
+    await this.polydexFactoryInstance.connect(this.signer).setFeeTo(this.converterV2Instance.address);
 
     const token1 = await ethers.getContractFactory(
       "ERC20Mock"
@@ -153,17 +153,16 @@ describe("ConverterV2 contract", function () {
 
   it("should set correct state variables", async function () {
   
-    const factory = await this.converterInstance.factory();
-    const router = await this.converterInstance.router();
-    const cnt = await this.converterInstance.cnt();
-    const cntStaker = await this.converterInstance.cntStaker();
-    const wmatic = await this.converterInstance.wmatic();
-    const l2Burner = await this.converterInstance.l2Burner();
-    const burnAllocation = await this.converterInstance.burnAllocation();
-    const stakersAllocation = await this.converterInstance.stakersAllocation();
-    const platformFeesAllocation = await this.converterInstance.platformFeesAllocation();
-    const platformAddr = await this.converterInstance.platformAddr();
-    const owner = await this.converterInstance.owner();
+    const factory = await this.converterV2Instance.factory();
+    const cnt = await this.converterV2Instance.cnt();
+    const cntStaker = await this.converterV2Instance.cntStaker();
+    const wmatic = await this.converterV2Instance.wmatic();
+    const l2Burner = await this.converterV2Instance.l2Burner();
+    const burnAllocation = await this.converterV2Instance.burnAllocation();
+    const stakersAllocation = await this.converterV2Instance.stakersAllocation();
+    const platformFeesAllocation = await this.converterV2Instance.platformFeesAllocation();
+    const platformAddr = await this.converterV2Instance.platformAddr();
+    const owner = await this.converterV2Instance.owner();
 
     expect(factory).to.equal(this.polydexFactoryInstance.address);
     expect(cnt).to.equal(this.cntTokenInstance.address);
@@ -178,21 +177,21 @@ describe("ConverterV2 contract", function () {
   });
 
   it("should set correctly set the polydex router", async function () {
-    await this.converterInstance.connect(this.signer).updateRouter(this.polydexRouterInstance.address);
-    const router = await this.converterInstance.router();
+    await this.converterV2Instance.connect(this.signer).updateRouter(this.polydexRouterInstance.address);
+    const router = await this.converterV2Instance.router();
     expect(router).to.equal(this.polydexRouterInstance.address);
   });
 
   it("should revert if pair is not found for LP tokens", async function () { 
-    await expect(this.converterInstance.connect(this.signer).convertLP(AddressZero, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
+    await expect(this.converterV2Instance.connect(this.signer).convertLP(AddressZero, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
    .to.be.revertedWith('Invalid pair');
    });
 
   it("should correctly call convertLP function and correctly allocate CNT tokens", async function () { 
-    const cntStaker = await this.converterInstance.cntStaker();
-    const l2Burner = await this.converterInstance.l2Burner();
-    const platformAddr = await this.converterInstance.platformAddr();
-    const tx = await this.converterInstance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]);
+    const cntStaker = await this.converterV2Instance.cntStaker();
+    const l2Burner = await this.converterV2Instance.l2Burner();
+    const platformAddr = await this.converterV2Instance.platformAddr();
+    const tx = await this.converterV2Instance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]);
     const txReceipt = await tx.wait();
     const cntConvertedEventLogs = txReceipt.events?.filter((x) => {return x.event == "CNTConverted"});
     expect(cntConvertedEventLogs.length).to.be.greaterThan(0)
@@ -212,14 +211,14 @@ describe("ConverterV2 contract", function () {
    it("should correctly call convertLP function and emit CNTConverted event", async function () { 
     const pairAddress = this.polydexFactoryInstance.getPair(this.token1Instance.address, this.token2Instance.address);
     const polydexERC20Instance = this.PolydexERC20.attach(pairAddress);
-    await polydexERC20Instance.connect(this.signer).transfer(this.converterInstance.address, getBigNumber(10));
-    await expect(this.converterInstance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
-   .to.emit(this.converterInstance, 'CNTConverted');
+    await polydexERC20Instance.connect(this.signer).transfer(this.converterV2Instance.address, getBigNumber(10));
+    await expect(this.converterV2Instance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
+   .to.emit(this.converterV2Instance, 'CNTConverted');
    });
 
   it("should correctly call convertToken function and correctly allocate CNT tokens", async function () { 
-    await this.token3Instance.connect(this.signer).transfer(this.converterInstance.address, getBigNumber(10));
-    const tx = await this.converterInstance.connect(this.signer).convertToken(this.token3Instance.address, [this.token3Instance.address,this.cntTokenInstance.address]);
+    await this.token3Instance.connect(this.signer).transfer(this.converterV2Instance.address, getBigNumber(10));
+    const tx = await this.converterV2Instance.connect(this.signer).convertToken(this.token3Instance.address, [this.token3Instance.address,this.cntTokenInstance.address]);
     const txReceipt = await tx.wait();
     const cntConvertedEventLogs = txReceipt.events?.filter((x) => {return x.event == "CNTConverted"});
     expect(cntConvertedEventLogs.length).to.be.greaterThan(0)

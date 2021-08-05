@@ -64,7 +64,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
         router = IPolydexRouter(0xBd13225f0a45BEad8510267B4D6a7c78146Be459);
     }
 
-    // Can be used by the owner to update the address for the L2 burner
+    // Can be used by the owner to update the address for the L2Burner
     function updateL2Burner(address _l2Burner) external onlyOwner {
         require(_l2Burner != address(0), "No zero address");
         l2Burner = _l2Burner;
@@ -92,6 +92,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
         platformFeesAllocation = _platformFeesAllocation;
     }
 
+    // Can be used by the owner to update the address for the CntStaker
     function updateCntStaker(address _newCntStaker) external onlyOwner {
         require(_newCntStaker != address(0), "Address cant be zero Address");
         cntStaker = _newCntStaker;
@@ -101,7 +102,8 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     convertLP is used to convert LP tokens received as fees by the converter contract to CNT. It uses the PolydexRouter to convert
     the underneath tokens in the LP pair (token0 and token1) to CNT. The CNT accumulated is used to allocate to different contracts
     as per their allocation share.
-    pathForToken0 requires the path that will be used by the Router to swap the token to CNT.
+    pathForToken0 requires the path that will be used by the PolydexRouter to swap the token0 to CNT.
+    pathForToken1 requires the path that will be used by the PolydexRouter to swap the token1 to CNT.
     */
     function convertLP(address token0, address[] calldata pathForToken0, address token1, address[] calldata pathForToken1) external nonReentrant() {
         // At least we try to make front-running harder to do.

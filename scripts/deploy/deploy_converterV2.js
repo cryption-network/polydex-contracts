@@ -8,7 +8,7 @@ const ConstructorParams = require("../constructorParams.json");
 
 async function main() {
   const ConverterV2 = await hre.ethers.getContractFactory("ConverterV2");
-  const converterInstance = await ConverterV2.deploy(
+  const converterV2Instance = await ConverterV2.deploy(
     ConstructorParams.POLYDEX_FACTORY,
     ConstructorParams.CNT_STAKER,
     ConstructorParams.CNT_TOKEN,
@@ -19,12 +19,12 @@ async function main() {
     ConstructorParams.PLATFORM_FEES_ALLOCATION,
     ConstructorParams.FEE_ADDRESS
   );
-  await converterInstance.deployed();
-  console.log("ConverterV2 deployed at " + converterInstance.address);
-  await converterInstance.deployTransaction.wait([(confirms = 6)]);
+  await converterV2Instance.deployed();
+  console.log("ConverterV2 deployed at " + converterV2Instance.address);
+  await converterV2Instance.deployTransaction.wait([(confirms = 6)]);
 
   await hre.run("verify:verify", {
-    address: converterInstance.address,
+    address: converterV2Instance.address,
     constructorArguments: [
       ConstructorParams.POLYDEX_FACTORY,
       ConstructorParams.CNT_STAKER,
