@@ -46,11 +46,7 @@ describe("ConverterV2 contract", function () {
       );
     await this.polydexRouterInstance.deployed();
     this.converterV2Instance = await ConverterV2.deploy(
-      this.polydexFactoryInstance.address,
-      ConstructorParams.CNT_STAKER,
       this.cntTokenInstance.address,
-      ConstructorParams.L2Burner,
-      this.wmaticTokenInstance.address,
       ConstructorParams.BURN_ALLOCATION,
       ConstructorParams.STAKERS_ALLOCATION,
       ConstructorParams.PLATFORM_FEES_ALLOCATION,
@@ -164,10 +160,10 @@ describe("ConverterV2 contract", function () {
     const platformAddr = await this.converterV2Instance.platformAddr();
     const owner = await this.converterV2Instance.owner();
 
-    expect(factory).to.equal(this.polydexFactoryInstance.address);
+    expect(factory).to.equal(ConstructorParams.POLYDEX_FACTORY);
     expect(cnt).to.equal(this.cntTokenInstance.address);
     expect(cntStaker).to.equal(ConstructorParams.CNT_STAKER);
-    expect(wmatic).to.equal(this.wmaticTokenInstance.address);
+    expect(wmatic).to.equal(ConstructorParams.WMATIC);
     expect(l2Burner).to.equal(ConstructorParams.L2Burner);
     expect(burnAllocation).to.equal(Number(ConstructorParams.BURN_ALLOCATION));
     expect(stakersAllocation).to.equal(Number(ConstructorParams.STAKERS_ALLOCATION));
@@ -180,6 +176,18 @@ describe("ConverterV2 contract", function () {
     await this.converterV2Instance.connect(this.signer).updateRouter(this.polydexRouterInstance.address);
     const router = await this.converterV2Instance.router();
     expect(router).to.equal(this.polydexRouterInstance.address);
+  });
+
+  it("should set correctly set the polydex factory", async function () {
+    await this.converterV2Instance.connect(this.signer).updateFactory(this.polydexFactoryInstance.address);
+    const factory = await this.converterV2Instance.factory();
+    expect(factory).to.equal(this.polydexFactoryInstance.address);
+  });
+
+  it("should set correctly set the wmatic address", async function () {
+    await this.converterV2Instance.connect(this.signer).updateWMATIC(this.wmaticTokenInstance.address);
+    const wmatic = await this.converterV2Instance.wmatic();
+    expect(wmatic).to.equal(this.wmaticTokenInstance.address);
   });
 
   it("should revert if pair is not found for LP tokens", async function () { 
