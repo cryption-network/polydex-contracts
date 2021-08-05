@@ -97,8 +97,8 @@ describe("ConverterV2 contract", function () {
     await this.polydexRouterInstance.connect(this.signer).addLiquidity(
       this.cntTokenInstance.address,
       this.token2Instance.address,
-      getBigNumber(100),
-      getBigNumber(1000),
+      getBigNumber(10000),
+      getBigNumber(100000),
       0,
       0,
       this.signer.address,
@@ -145,6 +145,26 @@ describe("ConverterV2 contract", function () {
       this.signer.address,
       MaxUint256,
     );
+
+    await this.polydexRouterInstance.connect(this.signer).swapExactTokensForTokens(
+      getBigNumber(5000),
+      0,
+      [this.token2Instance.address,this.cntTokenInstance.address],
+      this.signer.address,
+      MaxUint256,
+    );
+
+    await this.polydexRouterInstance.connect(this.signer).addLiquidity(
+      this.cntTokenInstance.address,
+      this.token2Instance.address,
+      getBigNumber(10000),
+      getBigNumber(100000),
+      0,
+      0,
+      this.signer.address,
+      MaxUint256,
+    );
+
   });
 
   it("should set correct state variables", async function () {
@@ -221,6 +241,11 @@ describe("ConverterV2 contract", function () {
     const polydexERC20Instance = this.PolydexERC20.attach(pairAddress);
     await polydexERC20Instance.connect(this.signer).transfer(this.converterV2Instance.address, getBigNumber(10));
     await expect(this.converterV2Instance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
+   .to.emit(this.converterV2Instance, 'CNTConverted');
+   });
+
+   it("should correctly call convertLP function and emit CNTConverted event if CNT token is present in pair", async function () { 
+    await expect(this.converterV2Instance.connect(this.signer).convertLP(this.token2Instance.address, [this.token2Instance.address,this.cntTokenInstance.address], this.cntTokenInstance.address, [this.cntTokenInstance.address, this.cntTokenInstance.address]))
    .to.emit(this.converterV2Instance, 'CNTConverted');
    });
 

@@ -157,10 +157,13 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     */
     function _swaptoCNT(address token, address[] calldata path) internal {
         //the path should always have CNT otherwise it will convert to the token added which would lead to loss of funds.
-        uint amountIn = IERC20(token).balanceOf(address(this));
-        require(amountIn > 0, 'Contract should have token balance greater than 0');
-        require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
-        router.swapExactTokensForTokens(amountIn, 1, path, address(this), block.timestamp + 1);
+        if (token != address(cnt)) 
+        {
+            uint amountIn = IERC20(token).balanceOf(address(this));
+            require(amountIn > 0, 'Contract should have token balance greater than 0');
+            require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
+            router.swapExactTokensForTokens(amountIn, 1, path, address(this), block.timestamp + 1);
+        }
     }
 
     /*
@@ -169,6 +172,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     */
     function _allocateCNT() internal {
         uint256 totalCNTAccumulated = IERC20(cnt).balanceOf(address(this));
+        require(totalCNTAccumulated > 0, 'No CNT accumulated to allocate');
         _safeTransfer(
             address(cnt),
             cntStaker,
