@@ -60,6 +60,11 @@ contract RewardManager is Ownable, ReentrancyGuard
         _;
     }
 
+    modifier checkTime(uint256 _startAccumulation, uint256 _endAccumulation) {
+        require(_endAccumulation > _startAccumulation, "end time should be greater than start");
+        _;
+    }
+
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
@@ -78,9 +83,11 @@ contract RewardManager is Ownable, ReentrancyGuard
         address _farmContract,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
-        address _burner) checkPercentages(_upfrontUnlock, _preMaturePenalty)
+        address _burner) 
+        checkPercentages(_upfrontUnlock, _preMaturePenalty)
+        checkTime(_startAccumulation, _endAccumulation)
+
     {
-        require(_endAccumulation > _startAccumulation, "end time should be greater than start");
         cnt = _cnt;
         startAccumulation = _startAccumulation;
         endAccumulation = _endAccumulation;
@@ -101,8 +108,11 @@ contract RewardManager is Ownable, ReentrancyGuard
         preMaturePenalty = _newpreMaturePenalty;
     }
     
-    function changeAccumulationTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external onlyOwner{
-        require(startAccumulation > _getNow(), "Start time should be of future");
+    function updateAccumulationTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external 
+    checkTime(_updatedStartTime, _updatedEndTime)
+    onlyOwner
+    {
+        require(startAccumulation > _getNow(), "Vesting already started can't update now");
         startAccumulation = _updatedStartTime;
         endAccumulation = _updatedEndTime;
     }
