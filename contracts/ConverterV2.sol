@@ -3,11 +3,11 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./polydex/interfaces/IPolydexERC20.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
 import "./polydex/interfaces/IPolydexFactory.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./polydex/interfaces/IPolydexRouter.sol";
 
 // ConverterV2 is Farm's left hand and kinda a wizard. He can create up CNT from pretty much anything!
@@ -30,7 +30,6 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     uint16 public stakersAllocation;
     uint16 public platformFeesAllocation;
     address public platformAddr;
-    uint256 private totalCNTAccumulated;
 
     event CNTConverted(
         uint256 stakersAllocated,
@@ -147,9 +146,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
         uint amountIn = IERC20(token).balanceOf(address(this));
         require(amountIn > 0, 'Contract should have token balance greater than 0');
         require(IERC20(token).approve(address(router), amountIn), 'approve failed.');
-        uint amountOutMin = 1;
-        uint deadline = block.timestamp + 1;
-        router.swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+        router.swapExactTokensForTokens(amountIn, 1, path, address(this), block.timestamp + 1);
     }
 
     /*
@@ -157,7 +154,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     to different contracts as per their allocation share.
     */
     function _allocateCNT() internal {
-        totalCNTAccumulated = IERC20(cnt).balanceOf(address(this));
+        uint256 totalCNTAccumulated = IERC20(cnt).balanceOf(address(this));
         _safeTransfer(
             address(cnt),
             cntStaker,
@@ -178,7 +175,6 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
             totalCNTAccumulated.mul(burnAllocation).div(1000),
             totalCNTAccumulated.mul(platformFeesAllocation).div(1000)
         );
-        totalCNTAccumulated = 0;
     }
 
     // Wrapper for safeTransfer
