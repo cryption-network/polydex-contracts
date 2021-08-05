@@ -5,12 +5,11 @@ chai.use(solidity);
 const { expect } = chai;
 const { MaxUint256, AddressZero } = ethers.constants;
 const ConstructorParams = require("../../scripts/constructorParams.json");
-const { BigNumber } = require("@ethersproject/bignumber");
 const { getBigNumber } = require('../utilities/index');
 
 const ERC20TokensSupply = getBigNumber(10**6);
 
-describe("Converter contract", function () {
+describe("ConverterV2 contract", function () {
 
   before(async function () {
     this.signers = await ethers.getSigners();
@@ -28,7 +27,7 @@ describe("Converter contract", function () {
         "PolydexFactory"
     );
     const PolydexRouter = await ethers.getContractFactory("PolydexRouter");
-    const Converter = await ethers.getContractFactory("Converter");
+    const ConverterV2 = await ethers.getContractFactory("ConverterV2");
     this.PolydexERC20 = await ethers.getContractFactory(
       "PolydexERC20"
     );
@@ -46,7 +45,7 @@ describe("Converter contract", function () {
       this.wmaticTokenInstance.address
       );
     await this.polydexRouterInstance.deployed();
-    this.converterInstance = await Converter.deploy(
+    this.converterInstance = await ConverterV2.deploy(
       this.polydexFactoryInstance.address,
       ConstructorParams.CNT_STAKER,
       this.cntTokenInstance.address,
@@ -63,7 +62,7 @@ describe("Converter contract", function () {
     console.log("polydexRouterInstance deployed at " + this.polydexRouterInstance.address);
     console.log("converterInstance deployed at " + this.converterInstance.address);
 
-    //feeTo Set to Converter Contract
+    //feeTo Set to ConverterV2 Contract
     await this.polydexFactoryInstance.connect(this.signer).setFeeTo(this.converterInstance.address);
 
     const token1 = await ethers.getContractFactory(
