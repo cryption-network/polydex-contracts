@@ -38,29 +38,25 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     );
 
     constructor(
-        IPolydexFactory _factory,
-        address _cntStaker,
         IERC20 _cnt,
-        address _l2Burner,
-        address _wmatic,
         uint16 _burnAllocation,
         uint16 _stakersAllocation,
         uint16 _platformFeesAllocation,
         address _platformAddr
     ) {
-        factory = _factory;
         cnt = _cnt;
-        cntStaker = _cntStaker;
-        l2Burner = _l2Burner;
-        wmatic = _wmatic;
         platformAddr = _platformAddr;
         setAllocation(
             _burnAllocation,
             _stakersAllocation,
             _platformFeesAllocation
         );
-        //Set to Polydex Router deployed on Matic Mainnet
+        //Set to Polydex Contract Addresses deployed on Matic Mainnet
         router = IPolydexRouter(0xBd13225f0a45BEad8510267B4D6a7c78146Be459);
+        factory = IPolydexFactory(0x5BdD1CD910e3307582F213b33699e676E61deaD9);
+        cntStaker = 0x82C2Fb7410dcfFEd4e9147413BD5005a0a6F58aA;
+        wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+        l2Burner = 0x937b524174B24f0884f9FEf167d6f9cdF553B371;
     }
 
     // Can be used by the owner to update the address for the L2Burner
@@ -73,6 +69,24 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     function updateRouter(IPolydexRouter _router) external onlyOwner {
         require(address(_router) != address(0), "No zero address");
         router = _router;
+    }
+
+    // Can be used by the owner to update the address for the factory
+    function updateFactory(IPolydexFactory _factory) external onlyOwner {
+        require(address(_factory) != address(0), "No zero address");
+        factory = _factory;
+    }
+
+     // Can be used by the owner to update the address for wmatic
+    function updateWMATIC(address _wmatic) external onlyOwner {
+        require(_wmatic != address(0), "Address cant be zero Address");
+        wmatic = _wmatic;
+    }
+
+    // Can be used by the owner to update the platformAddress
+    function updatePlatformAddress(address _platformAddr) external onlyOwner {
+        require(_platformAddr != address(0), "Address cant be zero Address");
+        platformAddr = _platformAddr;
     }
 
     // Set the allocation to handle accumulated swap fees
