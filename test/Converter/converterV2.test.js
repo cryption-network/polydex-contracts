@@ -192,6 +192,36 @@ describe("ConverterV2 contract", function () {
     expect(owner).to.equal(this.adminAddress);
   });
 
+  it("should revert if polydex router is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updateRouter(AddressZero))
+   .to.be.revertedWith('No zero address');
+  });
+
+  it("should revert if polydex factory is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updateFactory(AddressZero))
+    .to.be.revertedWith('No zero address');
+  });
+
+  it("should revert if wmatic address is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updateWMATIC(AddressZero))
+    .to.be.revertedWith('No zero address');
+  });
+
+  it("should revert if L2 burner address is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updateL2Burner(AddressZero))
+    .to.be.revertedWith('No zero address');
+  });
+
+  it("should revert if platform fees address is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updatePlatformAddress(AddressZero))
+    .to.be.revertedWith('No zero address');
+  });
+
+  it("should revert if cnt staker address is zero address", async function () {
+    await expect(this.converterV2Instance.connect(this.signer).updateCntStaker(AddressZero))
+    .to.be.revertedWith('No zero address');
+  });
+
   it("should set correctly set the polydex router", async function () {
     await this.converterV2Instance.connect(this.signer).updateRouter(this.polydexRouterInstance.address);
     const router = await this.converterV2Instance.router();
@@ -210,6 +240,24 @@ describe("ConverterV2 contract", function () {
     expect(wmatic).to.equal(this.wmaticTokenInstance.address);
   });
 
+  it("should set correctly set the L2 burner address", async function () {
+    await this.converterV2Instance.connect(this.signer).updateL2Burner(ConstructorParams.L2Burner);
+    const l2Burner = await this.converterV2Instance.l2Burner();
+    expect(l2Burner).to.equal(ConstructorParams.L2Burner);
+  });
+
+  it("should set correctly set the platform fees address", async function () {
+    await this.converterV2Instance.connect(this.signer).updatePlatformAddress(this.platformAddr);
+    const platformAddr = await this.converterV2Instance.platformAddr();
+    expect(platformAddr).to.equal(this.platformAddr);
+  });
+
+  it("should set correctly set the cnt staker address", async function () {
+    await this.converterV2Instance.connect(this.signer).updateCntStaker(ConstructorParams.CNT_STAKER);
+    const cntStaker = await this.converterV2Instance.cntStaker();
+    expect(cntStaker).to.equal(ConstructorParams.CNT_STAKER);
+  });
+
   it("should revert if pair is not found for LP tokens", async function () { 
     await expect(this.converterV2Instance.connect(this.signer).convertLP(AddressZero, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]))
    .to.be.revertedWith('Invalid pair');
@@ -221,7 +269,7 @@ describe("ConverterV2 contract", function () {
     const platformAddr = await this.converterV2Instance.platformAddr();
     const tx = await this.converterV2Instance.connect(this.signer).convertLP(this.token1Instance.address, [this.token1Instance.address,this.cntTokenInstance.address], this.token2Instance.address, [this.token2Instance.address, this.cntTokenInstance.address]);
     const txReceipt = await tx.wait();
-    const cntConvertedEventLogs = txReceipt.events?.filter((x) => {return x.event == "CNTConverted"});
+    const cntConvertedEventLogs = txReceipt.events.filter((x) => {return x.event == "CNTConverted"});
     expect(cntConvertedEventLogs.length).to.be.greaterThan(0)
     const { args } = cntConvertedEventLogs[0];
     expect(args).to.be.haveOwnProperty('stakersAllocated');
@@ -245,24 +293,29 @@ describe("ConverterV2 contract", function () {
    });
 
    it("should correctly call convertLP function and emit CNTConverted event if CNT token is present in pair", async function () { 
-    await expect(this.converterV2Instance.connect(this.signer).convertLP(this.token2Instance.address, [this.token2Instance.address,this.cntTokenInstance.address], this.cntTokenInstance.address, [this.cntTokenInstance.address, this.cntTokenInstance.address]))
-   .to.emit(this.converterV2Instance, 'CNTConverted');
+      await expect(this.converterV2Instance.connect(this.signer).convertLP(this.token2Instance.address, [this.token2Instance.address,this.cntTokenInstance.address], this.cntTokenInstance.address, [this.cntTokenInstance.address, this.cntTokenInstance.address]))
+    .to.emit(this.converterV2Instance, 'CNTConverted');
    });
 
-  it("should correctly call convertToken function and correctly allocate CNT tokens", async function () { 
-    await this.token3Instance.connect(this.signer).transfer(this.converterV2Instance.address, getBigNumber(10));
-    const tx = await this.converterV2Instance.connect(this.signer).convertToken(this.token3Instance.address, [this.token3Instance.address,this.cntTokenInstance.address]);
-    const txReceipt = await tx.wait();
-    const cntConvertedEventLogs = txReceipt.events?.filter((x) => {return x.event == "CNTConverted"});
-    expect(cntConvertedEventLogs.length).to.be.greaterThan(0)
-    const { args } = cntConvertedEventLogs[0];
-    expect(args).to.be.haveOwnProperty('stakersAllocated');
-    expect(args).to.be.haveOwnProperty('burnt');
-    expect(args).to.be.haveOwnProperty('platformFees');
-    const {stakersAllocated, burnt, platformFees} = args;
-    expect(Number(stakersAllocated)).to.be.greaterThan(0);
-    expect(Number(burnt)).to.be.greaterThan(0);
-    expect(Number(platformFees)).to.be.greaterThan(0);
-   });
+   it("should correctly call convertToken function and correctly allocate CNT tokens", async function () { 
+      await this.token3Instance.connect(this.signer).transfer(this.converterV2Instance.address, getBigNumber(10));
+      const tx = await this.converterV2Instance.connect(this.signer).convertToken(this.token3Instance.address, [this.token3Instance.address,this.cntTokenInstance.address]);
+      const txReceipt = await tx.wait();
+      const cntConvertedEventLogs = txReceipt.events.filter((x) => {return x.event == "CNTConverted"});
+      expect(cntConvertedEventLogs.length).to.be.greaterThan(0)
+      const { args } = cntConvertedEventLogs[0];
+      expect(args).to.be.haveOwnProperty('stakersAllocated');
+      expect(args).to.be.haveOwnProperty('burnt');
+      expect(args).to.be.haveOwnProperty('platformFees');
+      const {stakersAllocated, burnt, platformFees} = args;
+      expect(Number(stakersAllocated)).to.be.greaterThan(0);
+      expect(Number(burnt)).to.be.greaterThan(0);
+      expect(Number(platformFees)).to.be.greaterThan(0);
+  });
+
+   it("should revert if address for token to be converted is zero", async function () {
+      await expect(this.converterV2Instance.connect(this.signer).convertToken(AddressZero, [this.token3Instance.address,this.cntTokenInstance.address]))
+      .to.be.revertedWith('No zero address');
+  });
 
   });
