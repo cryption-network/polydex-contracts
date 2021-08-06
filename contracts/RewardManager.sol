@@ -218,11 +218,7 @@ contract RewardManager is Ownable, ReentrancyGuard
             uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
 
             totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(effectiveAmount).add(burnAmount);
-            // Safety measure - this should never trigger
-            require(
-                totalDrawn[_beneficiary] == vestedAmount[_beneficiary],
-                "Something Wrong while Pre Mature draw"
-            );
+            vestedAmount[_beneficiary] = 0;
             cnt.safeTransfer(_beneficiary, effectiveAmount);
             cnt.safeTransfer(l2Burner, burnAmount);
             emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
