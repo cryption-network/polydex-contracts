@@ -37,6 +37,11 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
         uint256 platformFees
     );
 
+    modifier ensureNonZeroAddress(address addressToCheck) {
+        require(addressToCheck != address(0), "No zero address");
+        _;
+    }
+
     constructor(
         IERC20 _cnt,
         uint16 _burnAllocation,
@@ -60,32 +65,27 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     }
 
     // Can be used by the owner to update the address for the L2Burner
-    function updateL2Burner(address _l2Burner) external onlyOwner {
-        require(_l2Burner != address(0), "No zero address");
+    function updateL2Burner(address _l2Burner) external onlyOwner ensureNonZeroAddress(_l2Burner) {
         l2Burner = _l2Burner;
     }
 
     // Can be used by the owner to update the address for the PolydexRouter
-    function updateRouter(IPolydexRouter _router) external onlyOwner {
-        require(address(_router) != address(0), "No zero address");
+    function updateRouter(IPolydexRouter _router) external onlyOwner ensureNonZeroAddress(address(_router)) {
         router = _router;
     }
 
     // Can be used by the owner to update the address for the factory
-    function updateFactory(IPolydexFactory _factory) external onlyOwner {
-        require(address(_factory) != address(0), "No zero address");
+    function updateFactory(IPolydexFactory _factory) external onlyOwner ensureNonZeroAddress(address(_factory)) {
         factory = _factory;
     }
 
      // Can be used by the owner to update the address for wmatic
-    function updateWMATIC(address _wmatic) external onlyOwner {
-        require(_wmatic != address(0), "Address cant be zero Address");
+    function updateWMATIC(address _wmatic) external onlyOwner ensureNonZeroAddress(_wmatic) {
         wmatic = _wmatic;
     }
 
     // Can be used by the owner to update the platformAddress
-    function updatePlatformAddress(address _platformAddr) external onlyOwner {
-        require(_platformAddr != address(0), "Address cant be zero Address");
+    function updatePlatformAddress(address _platformAddr) external onlyOwner ensureNonZeroAddress(_platformAddr)  {
         platformAddr = _platformAddr;
     }
 
@@ -106,8 +106,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     }
 
     // Can be used by the owner to update the address for the CntStaker
-    function updateCntStaker(address _newCntStaker) external onlyOwner {
-        require(_newCntStaker != address(0), "Address cant be zero Address");
+    function updateCntStaker(address _newCntStaker) external onlyOwner ensureNonZeroAddress(_newCntStaker) {
         cntStaker = _newCntStaker;
     }
 
@@ -143,10 +142,9 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     the ERC20 tokens to CNT. The CNT accumulated is used to allocate to different contracts as per their allocation share.
     path param requires the path that will be used by the Router to swap the token to CNT.
     */
-    function convertToken(address token, address[] calldata path) external nonReentrant() {
+    function convertToken(address token, address[] calldata path) external nonReentrant() ensureNonZeroAddress(token) {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
-        require(address(token) != address(0), "Invalid token address");
         _swaptoCNT(token, path);
         _allocateCNT();
     }
