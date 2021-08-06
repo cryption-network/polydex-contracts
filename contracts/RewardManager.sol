@@ -217,8 +217,7 @@ contract RewardManager is Ownable, ReentrancyGuard
             uint256 effectivePercentage = 1000 - preMaturePenalty;
             uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
 
-            totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(effectiveAmount).add(burnAmount);
-            vestedAmount[_beneficiary] = 0;
+            totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
             cnt.safeTransfer(_beneficiary, effectiveAmount);
             cnt.safeTransfer(l2Burner, burnAmount);
             emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
