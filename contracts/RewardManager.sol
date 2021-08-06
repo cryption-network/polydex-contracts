@@ -149,7 +149,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function vest(address _user, uint256 _amount) internal {
-        require(_getNow() < endAccumulation, "Cannot vest");
+        require(_getNow() < startAccumulation, "Cannot vest");
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
@@ -160,14 +160,14 @@ contract RewardManager is Ownable, ReentrancyGuard
     /**
      * @notice Vesting schedule data associated for a user
      * @dev Must be called directly by the beneficiary assigned the tokens in the schedule
-     * @return Total vested amount for user
-     * @return total token drawn by user
-     * @return token available to be claimed
-     * @return tokens still due (and currently locked) from vesting schedule
+     * @return totalVested Total vested amount for user
+     * @return totalDrawnAmount total token drawn by user
+     * @return claimable token available to be claimed
+     * @return stillDue tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
     public view
-    returns (uint256 , uint256 , uint256 , uint256 ) {
+    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 claimable, uint256 stillDue) {
         return (
         vestedAmount[_user],
         totalDrawn[_user],
