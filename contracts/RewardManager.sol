@@ -178,7 +178,10 @@ contract RewardManager is Ownable, ReentrancyGuard
 
     function _availableDrawDownAmount(address _user) internal view returns (uint256) {
         uint256 currentTime = _getNow();
-        if (currentTime < startAccumulation) {
+        if(totalDrawn[_user]  == vestedAmount[_user]){
+            return 0;
+        }
+        else if (currentTime < startAccumulation) {
             return 0;
         } else if (currentTime >= endAccumulation) {
             return _remainingBalance(_user);
