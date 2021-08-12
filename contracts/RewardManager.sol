@@ -180,7 +180,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 currentTime = _getNow();
         if (currentTime < startAccumulation) {
             return 0;
-        } else if (currentTime >= endAccumulation) {
+        } else if (currentTime >= endAccumulation || totalDrawn[_user] == vestedAmount[_user]) {
             return _remainingBalance(_user);
         }
         else {
