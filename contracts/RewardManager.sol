@@ -40,7 +40,9 @@ contract RewardManager is Ownable, ReentrancyGuard
     /// @notice cumulative total of tokens drawn down (and transferred from the deposit account) per beneficiary
     mapping(address => uint256) public totalDrawn;
 
-    
+    /// @notice total tokens burnt per beneficiary
+    mapping(address => uint256) public burntAmount;
+
     /// @notice event emitted when a vesting schedule is created
     event Vested(address indexed _beneficiary, uint256 indexed value);
     
@@ -162,15 +164,17 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @dev Must be called directly by the beneficiary assigned the tokens in the schedule
      * @return totalVested Total vested amount for user
      * @return totalDrawnAmount total token drawn by user
+     * @return amountBurnt total amount burnt while pre maturely drawing
      * @return claimable token available to be claimed
      * @return stillDue tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
     public view
-    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 claimable, uint256 stillDue) {
+    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 stillDue) {
         return (
         vestedAmount[_user],
         totalDrawn[_user],
+        burntAmount[_user],
         _availableDrawDownAmount(_user),
         _remainingBalance(_user)
         );
@@ -212,12 +216,13 @@ contract RewardManager is Ownable, ReentrancyGuard
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
             uint256 drawn = _drawDown(_beneficiary);
-            (,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
+            (,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
             uint256 effectivePercentage = 1000 - preMaturePenalty;
             uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
 
             totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
+            burntAmount[_beneficiary] = burntAmount[_beneficiary].add(burnAmount);
             cnt.safeTransfer(_beneficiary, effectiveAmount);
             cnt.safeTransfer(l2Burner, burnAmount);
             emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
