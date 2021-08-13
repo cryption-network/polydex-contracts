@@ -308,7 +308,7 @@ contract StakingPool is
             return;
         }
         uint256 lpSupply = totalInputTokensStaked;
-
+    
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number;
             return;
@@ -631,10 +631,6 @@ contract StakingPool is
         IERC20 _rewardToken
     ) private {
         uint256 rewardBal = _rewardToken.balanceOf(address(this));
-        if (_amount > rewardBal) {
-            _rewardToken.transfer(_to, rewardBal);
-        } else {
-            _rewardToken.transfer(_to, _amount);
-        }
+        _rewardToken.transfer(_to, rewardBal);
     }
 }
