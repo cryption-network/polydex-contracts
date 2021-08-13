@@ -630,7 +630,6 @@ contract StakingPool is
         uint256 _amount,
         IERC20 _rewardToken
     ) private {
-        uint256 rewardBal = _rewardToken.balanceOf(address(this));
-        _rewardToken.transfer(_to, rewardBal);
+        _rewardToken.transfer(_to, _amount);
     }
 }
