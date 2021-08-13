@@ -326,7 +326,7 @@ contract StakingPool is
             : farmInfo.endBlock;
     }
 
-    function massUpdatePools() {
+    function massUpdatePools() public{
         for (uint256 i = 0; i < rewardPool.length; i++) {
             updatePool(i);
         }
