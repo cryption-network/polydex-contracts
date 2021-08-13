@@ -597,6 +597,23 @@ contract StakingPool is
         feeAddress = _feeAddress;
     }
 
+    function changeDepositFee(uint256 _depositFeeBP) external onlyOwner {
+        require(
+            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        farmInfo.depositFeeBP = _depositFeeBP;
+    }
+
+    function changeFarmHarvestInterval(uint256 _harvestInterval) external onlyOwner {
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
+        massUpdatePools();
+        farmInfo.harvestInterval = _harvestInterval;
+    }
+
     // Function to update the end block for owner. To control the distribution duration.
     function updateEndBlock(uint256 _endBlock) external onlyOwner {
         farmInfo.endBlock = _endBlock;
