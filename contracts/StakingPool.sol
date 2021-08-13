@@ -597,7 +597,7 @@ contract StakingPool is
         feeAddress = _feeAddress;
     }
 
-    function changeDepositFee(uint256 _depositFeeBP) external onlyOwner {
+    function changeDepositFee(uint16 _depositFeeBP) external onlyOwner {
         require(
             _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
