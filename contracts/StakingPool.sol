@@ -100,12 +100,12 @@ contract StakingPool is
     event UserBlacklisted(address _primaryUser, address _blacklistedUser);
     event BlockRewardUpdated(uint256 _blockReward, uint256 _rewardPoolIndex);
 
-    constructor(address _feeAddress, IERC20 _CNT) {
+    constructor(address _feeAddress) {
         _initializeEIP712("StakingPool");
         feeAddress = _feeAddress;
         isRewardManagerEnabled = false;
         rewardManager = address(0);
-        CNT = IERC20(_CNT);
+        CNT = IERC20(0xD1e6354fb05bF72A8909266203dAb80947dcEccF);
     }
 
     function _msgSender()
