@@ -13,6 +13,16 @@ import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+interface IRewardManager {
+    function handleRewardsForUser(
+        address user,
+        uint256 rewardAmount,
+        uint256 timestamp,
+        uint256 pid,
+        uint256 rewardDebt
+    ) external;
+}
+
 contract StakingPool is
     Ownable,
     ContextMixin,
@@ -74,6 +84,13 @@ contract StakingPool is
 
     bool public isInitiated;
 
+    //Trigger for RewardManager mode
+    bool public isRewardManagerEnabled;
+
+    address public rewardManager;
+
+    IERC20 public CNT;
+
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
@@ -83,9 +100,12 @@ contract StakingPool is
     event UserBlacklisted(address _primaryUser, address _blacklistedUser);
     event BlockRewardUpdated(uint256 _blockReward, uint256 _rewardPoolIndex);
 
-    constructor(address _feeAddress) {
+    constructor(address _feeAddress, IERC20 _CNT) {
         _initializeEIP712("StakingPool");
         feeAddress = _feeAddress;
+        isRewardManagerEnabled = false;
+        rewardManager = address(0);
+        CNT = IERC20(_CNT);
     }
 
     function _msgSender()
@@ -95,6 +115,20 @@ contract StakingPool is
         returns (address payable sender)
     {
         return ContextMixin.msgSender();
+    }
+
+    function updateRewardManagerMode(bool _isRewardManagerEnabled)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        isRewardManagerEnabled = _isRewardManagerEnabled;
+    }
+
+    function updateRewardManager(address _rewardManager) external onlyOwner {
+        require(_rewardManager != address(0), "Reward Manager address is zero");
+        massUpdatePools();
+        rewardManager = _rewardManager;
     }
 
     /**
@@ -112,7 +146,6 @@ contract StakingPool is
         uint16 _depositFeeBP,
         uint256 _harvestInterval
     ) external onlyOwner {
-
         require(!isInitiated, "Staking pool is already initiated");
 
         require(
@@ -293,6 +326,12 @@ contract StakingPool is
             : farmInfo.endBlock;
     }
 
+    function massUpdatePools() {
+        for (uint256 i = 0; i < rewardPool.length; i++) {
+            updatePool(i);
+        }
+    }
+
     /**
      * @notice deposit LP token function for _msgSender()
      * @param _amount the total deposit amount
@@ -409,8 +448,8 @@ contract StakingPool is
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = _amount
-                .mul(farmInfo.withdrawalFeeBP)
-                .div(10000);
+                    .mul(farmInfo.withdrawalFeeBP)
+                    .div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
@@ -464,10 +503,9 @@ contract StakingPool is
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(
-        address _user,
-        address _withdrawer
-    ) internal {
+    function payOrLockupPendingReward(address _user, address _withdrawer)
+        internal
+    {
         UserInfo storage user = userInfo[_user];
         if (user.nextHarvestUntil == 0) {
             user.nextHarvestUntil = block.timestamp.add(
@@ -487,10 +525,10 @@ contract StakingPool is
                 rewardInfo.rewardToken
             ];
             uint256 pending = user
-            .amount
-            .mul(rewardInfo.accRewardPerShare)
-            .div(1e12)
-            .sub(userRewardDebt);
+                .amount
+                .mul(rewardInfo.accRewardPerShare)
+                .div(1e12)
+                .sub(userRewardDebt);
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
@@ -504,17 +542,35 @@ contract StakingPool is
                     user.nextHarvestUntil = block.timestamp.add(
                         farmInfo.harvestInterval
                     );
-                    // send rewards
-                    _safeRewardTransfer(
-                        _withdrawer,
-                        totalRewards,
-                        rewardInfo.rewardToken
-                    );
+                    if (
+                        isRewardManagerEnabled == true &&
+                        address(rewardInfo.rewardToken) == address(CNT)
+                    ) {
+                        _safeRewardTransfer(
+                            rewardManager,
+                            totalRewards,
+                            rewardInfo.rewardToken
+                        );
+                        IRewardManager(rewardManager).handleRewardsForUser(
+                            _withdrawer,
+                            totalRewards,
+                            block.timestamp,
+                            0,
+                            user.rewardDebt[rewardInfo.rewardToken]
+                        );
+                    } else {
+                        // send rewards
+                        _safeRewardTransfer(
+                            _withdrawer,
+                            totalRewards,
+                            rewardInfo.rewardToken
+                        );
+                    }
                 }
             } else if (pending > 0) {
                 user.rewardLockedUp[rewardInfo.rewardToken] = user
-                .rewardLockedUp[rewardInfo.rewardToken]
-                .add(pending);
+                    .rewardLockedUp[rewardInfo.rewardToken]
+                    .add(pending);
                 totalLockedUpRewards[
                     rewardInfo.rewardToken
                 ] = totalLockedUpRewards[rewardInfo.rewardToken].add(pending);
@@ -529,9 +585,9 @@ contract StakingPool is
             RewardInfo storage rewardInfo = rewardPool[i];
 
             user.rewardDebt[rewardInfo.rewardToken] = user
-            .amount
-            .mul(rewardInfo.accRewardPerShare)
-            .div(1e12);
+                .amount
+                .mul(rewardInfo.accRewardPerShare)
+                .div(1e12);
         }
     }
 
