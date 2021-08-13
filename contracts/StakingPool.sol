@@ -47,6 +47,7 @@ contract StakingPool is
         uint256 harvestInterval; // Harvest interval in seconds
         IERC20 inputToken;
         uint16 withdrawalFeeBP; // Deposit fee in basis points
+        uint16 depositFeeBP; // Deposit fee in basis points
     }
 
     // Deposit Fee address
@@ -108,6 +109,7 @@ contract StakingPool is
         uint256 _startBlock,
         uint256 _endBlock,
         uint16 _withdrawalFeeBP,
+        uint16 _depositFeeBP,
         uint256 _harvestInterval
     ) external onlyOwner {
 
@@ -115,6 +117,10 @@ contract StakingPool is
 
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        require(
+            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -150,6 +156,7 @@ contract StakingPool is
         );
 
         farmInfo.withdrawalFeeBP = _withdrawalFeeBP;
+        farmInfo.depositFeeBP = _depositFeeBP;
         farmInfo.harvestInterval = _harvestInterval;
 
         activeRewardTokens[address(_rewardToken)] = true;
@@ -353,7 +360,16 @@ contract StakingPool is
                 address(this),
                 _amount
             );
-            user.amount = user.amount.add(_amount);
+            if (farmInfo.depositFeeBP > 0) {
+                uint256 depositFee = _amount
+                .mul(farmInfo.depositFeeBP)
+                .div(10000);
+                farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
+                user.amount = user.amount.add(_amount.sub(depositFee));
+            } else {
+                user.amount = user.amount.add(_amount);
+            }
+            
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
