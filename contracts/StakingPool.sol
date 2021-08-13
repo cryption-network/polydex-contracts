@@ -13,6 +13,16 @@ import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+interface IRewardManager {
+    function handleRewardsForUser(
+        address user,
+        uint256 rewardAmount,
+        uint256 timestamp,
+        uint256 pid,
+        uint256 rewardDebt
+    ) external;
+}
+
 contract StakingPool is
     Ownable,
     ContextMixin,
@@ -47,6 +57,7 @@ contract StakingPool is
         uint256 harvestInterval; // Harvest interval in seconds
         IERC20 inputToken;
         uint16 withdrawalFeeBP; // Deposit fee in basis points
+        uint16 depositFeeBP; // Deposit fee in basis points
     }
 
     // Deposit Fee address
@@ -73,6 +84,13 @@ contract StakingPool is
 
     bool public isInitiated;
 
+    //Trigger for RewardManager mode
+    bool public isRewardManagerEnabled;
+
+    address public rewardManager;
+
+    IERC20 public CNT;
+
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
@@ -82,9 +100,12 @@ contract StakingPool is
     event UserBlacklisted(address _primaryUser, address _blacklistedUser);
     event BlockRewardUpdated(uint256 _blockReward, uint256 _rewardPoolIndex);
 
-    constructor(address _feeAddress) {
+    constructor(address _feeAddress, IERC20 _CNT) {
         _initializeEIP712("StakingPool");
         feeAddress = _feeAddress;
+        isRewardManagerEnabled = false;
+        rewardManager = address(0);
+        CNT = IERC20(_CNT);
     }
 
     function _msgSender()
@@ -94,6 +115,20 @@ contract StakingPool is
         returns (address payable sender)
     {
         return ContextMixin.msgSender();
+    }
+
+    function updateRewardManagerMode(bool _isRewardManagerEnabled)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        isRewardManagerEnabled = _isRewardManagerEnabled;
+    }
+
+    function updateRewardManager(address _rewardManager) external onlyOwner {
+        require(_rewardManager != address(0), "Reward Manager address is zero");
+        massUpdatePools();
+        rewardManager = _rewardManager;
     }
 
     /**
@@ -108,13 +143,17 @@ contract StakingPool is
         uint256 _startBlock,
         uint256 _endBlock,
         uint16 _withdrawalFeeBP,
+        uint16 _depositFeeBP,
         uint256 _harvestInterval
     ) external onlyOwner {
-
         require(!isInitiated, "Staking pool is already initiated");
 
         require(
             _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        require(
+            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -150,6 +189,7 @@ contract StakingPool is
         );
 
         farmInfo.withdrawalFeeBP = _withdrawalFeeBP;
+        farmInfo.depositFeeBP = _depositFeeBP;
         farmInfo.harvestInterval = _harvestInterval;
 
         activeRewardTokens[address(_rewardToken)] = true;
@@ -268,7 +308,7 @@ contract StakingPool is
             return;
         }
         uint256 lpSupply = totalInputTokensStaked;
-
+    
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number;
             return;
@@ -284,6 +324,12 @@ contract StakingPool is
         rewardInfo.lastRewardBlock = block.number < farmInfo.endBlock
             ? block.number
             : farmInfo.endBlock;
+    }
+
+    function massUpdatePools() public{
+        for (uint256 i = 0; i < rewardPool.length; i++) {
+            updatePool(i);
+        }
     }
 
     /**
@@ -353,7 +399,16 @@ contract StakingPool is
                 address(this),
                 _amount
             );
-            user.amount = user.amount.add(_amount);
+            if (farmInfo.depositFeeBP > 0) {
+                uint256 depositFee = _amount
+                .mul(farmInfo.depositFeeBP)
+                .div(10000);
+                farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
+                user.amount = user.amount.add(_amount.sub(depositFee));
+            } else {
+                user.amount = user.amount.add(_amount);
+            }
+            
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
@@ -393,8 +448,8 @@ contract StakingPool is
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = _amount
-                .mul(farmInfo.withdrawalFeeBP)
-                .div(10000);
+                    .mul(farmInfo.withdrawalFeeBP)
+                    .div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
@@ -448,10 +503,9 @@ contract StakingPool is
         return user.whiteListedHandlers[_user];
     }
 
-    function payOrLockupPendingReward(
-        address _user,
-        address _withdrawer
-    ) internal {
+    function payOrLockupPendingReward(address _user, address _withdrawer)
+        internal
+    {
         UserInfo storage user = userInfo[_user];
         if (user.nextHarvestUntil == 0) {
             user.nextHarvestUntil = block.timestamp.add(
@@ -471,10 +525,10 @@ contract StakingPool is
                 rewardInfo.rewardToken
             ];
             uint256 pending = user
-            .amount
-            .mul(rewardInfo.accRewardPerShare)
-            .div(1e12)
-            .sub(userRewardDebt);
+                .amount
+                .mul(rewardInfo.accRewardPerShare)
+                .div(1e12)
+                .sub(userRewardDebt);
             if (canUserHarvest) {
                 if (pending > 0 || userRewardLockedUp > 0) {
                     uint256 totalRewards = pending.add(userRewardLockedUp);
@@ -488,17 +542,35 @@ contract StakingPool is
                     user.nextHarvestUntil = block.timestamp.add(
                         farmInfo.harvestInterval
                     );
-                    // send rewards
-                    _safeRewardTransfer(
-                        _withdrawer,
-                        totalRewards,
-                        rewardInfo.rewardToken
-                    );
+                    if (
+                        isRewardManagerEnabled == true &&
+                        address(rewardInfo.rewardToken) == address(CNT)
+                    ) {
+                        _safeRewardTransfer(
+                            rewardManager,
+                            totalRewards,
+                            rewardInfo.rewardToken
+                        );
+                        IRewardManager(rewardManager).handleRewardsForUser(
+                            _withdrawer,
+                            totalRewards,
+                            block.timestamp,
+                            0,
+                            user.rewardDebt[rewardInfo.rewardToken]
+                        );
+                    } else {
+                        // send rewards
+                        _safeRewardTransfer(
+                            _withdrawer,
+                            totalRewards,
+                            rewardInfo.rewardToken
+                        );
+                    }
                 }
             } else if (pending > 0) {
                 user.rewardLockedUp[rewardInfo.rewardToken] = user
-                .rewardLockedUp[rewardInfo.rewardToken]
-                .add(pending);
+                    .rewardLockedUp[rewardInfo.rewardToken]
+                    .add(pending);
                 totalLockedUpRewards[
                     rewardInfo.rewardToken
                 ] = totalLockedUpRewards[rewardInfo.rewardToken].add(pending);
@@ -513,9 +585,9 @@ contract StakingPool is
             RewardInfo storage rewardInfo = rewardPool[i];
 
             user.rewardDebt[rewardInfo.rewardToken] = user
-            .amount
-            .mul(rewardInfo.accRewardPerShare)
-            .div(1e12);
+                .amount
+                .mul(rewardInfo.accRewardPerShare)
+                .div(1e12);
         }
     }
 
@@ -523,6 +595,23 @@ contract StakingPool is
     function setFeeAddress(address _feeAddress) external onlyOwner {
         require(_feeAddress != address(0), "setFeeAddress: invalid address");
         feeAddress = _feeAddress;
+    }
+
+    function changeDepositFee(uint256 _depositFeeBP) external onlyOwner {
+        require(
+            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid deposit fee basis points"
+        );
+        farmInfo.depositFeeBP = _depositFeeBP;
+    }
+
+    function changeFarmHarvestInterval(uint256 _harvestInterval) external onlyOwner {
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
+        massUpdatePools();
+        farmInfo.harvestInterval = _harvestInterval;
     }
 
     // Function to update the end block for owner. To control the distribution duration.
@@ -558,11 +647,6 @@ contract StakingPool is
         uint256 _amount,
         IERC20 _rewardToken
     ) private {
-        uint256 rewardBal = _rewardToken.balanceOf(address(this));
-        if (_amount > rewardBal) {
-            _rewardToken.transfer(_to, rewardBal);
-        } else {
-            _rewardToken.transfer(_to, _amount);
-        }
+        _rewardToken.transfer(_to, _amount);
     }
 }
