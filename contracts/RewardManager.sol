@@ -51,11 +51,6 @@ contract RewardManager is Ownable, ReentrancyGuard
     
      /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
     event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
-    
-    modifier isVestingPeriod() {
-        require(_getNow() > startAccumulation, "Vesting not yet started");
-        _;
-    }
 
     modifier checkPercentages(uint256 _upfrontUnlock, uint256 _preMaturePenalty) {
         require(_upfrontUnlock.add(_preMaturePenalty) <= 1000, "Invalid Percentages");
@@ -203,7 +198,8 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Draws down any vested tokens due
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function drawDown() external nonReentrant isVestingPeriod returns (uint256) {
+    function drawDown() external nonReentrant returns (uint256) {
+        require(_getNow() > startAccumulation, "Vesting not yet started");
         return _drawDown(msg.sender);
     }
     
@@ -211,7 +207,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function preMatureDraw() external nonReentrant isVestingPeriod returns (bool) {
+    function preMatureDraw() external nonReentrant returns (bool) {
             address _beneficiary = msg.sender;
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
@@ -235,7 +231,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         require(vestedAmount[_beneficiary] > 0, "No vesting found");
 
         uint256 amount = _availableDrawDownAmount(_beneficiary);
-        require(amount > 0, "No allowance left to withdraw");
+        if(amount == 0) return 0;
 
         // Increase total drawn amount
         totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(amount);
