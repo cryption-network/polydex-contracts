@@ -8,7 +8,6 @@ async function main() {
     ConstructorParams.CNT_TOKEN,
     ConstructorParams.startAccumulationTime,
     ConstructorParams.endAccumulationTime,
-    ConstructorParams.farmContract,
     ConstructorParams.upfrontUnlockPercentage,
     ConstructorParams.preMaturePenaltyPercentage,
     ConstructorParams.L2Burner
@@ -24,7 +23,6 @@ async function main() {
       ConstructorParams.CNT_TOKEN,
       ConstructorParams.startAccumulationTime,
       ConstructorParams.endAccumulationTime,
-      ConstructorParams.farmContract,
       ConstructorParams.upfrontUnlockPercentage,
       ConstructorParams.preMaturePenaltyPercentage,
       ConstructorParams.L2Burner
