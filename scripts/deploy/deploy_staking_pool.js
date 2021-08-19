@@ -9,7 +9,8 @@ const ConstructorParams = require("../constructorParams.json");
 async function main() {
   const StakingPool = await hre.ethers.getContractFactory("StakingPool");
   const stakingPoolInstance = await StakingPool.deploy(
-    ConstructorParams.FEE_ADDRESS
+    ConstructorParams.FEE_ADDRESS,
+    ConstructorParams.CNT_TOKEN
   );
   await stakingPoolInstance.deployed();
   console.log("Staking Pool deployed at " + stakingPoolInstance.address);
@@ -18,7 +19,8 @@ async function main() {
   await hre.run("verify:verify", {
     address: stakingPoolInstance.address,
     constructorArguments: [
-      ConstructorParams.FEE_ADDRESS
+      ConstructorParams.FEE_ADDRESS,
+      ConstructorParams.CNT_TOKEN,
     ],
   });
 }
