@@ -10,8 +10,9 @@ contract RewardManager is Ownable, ReentrancyGuard
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    
-    address public farmContract;
+
+    // whitelisted rewardDistributors
+    mapping (address => bool) public rewardDistributor;
     
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
     mapping (address => bool) public excludedAddresses;
@@ -67,7 +68,6 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @param _cnt cnt token address
      * @param _startAccumulation start timestamp
      * @param _endAccumulation end timestamp
-     * @param _farmContract Address of Farimg contract
      * @param _upfrontUnlock Upfront unlock percentage
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
      * @param _burner Burner for collecting preMaturePenalty
@@ -77,7 +77,6 @@ contract RewardManager is Ownable, ReentrancyGuard
         IERC20 _cnt,
         uint256 _startAccumulation,
         uint256 _endAccumulation,
-        address _farmContract,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         address _burner) 
@@ -88,7 +87,6 @@ contract RewardManager is Ownable, ReentrancyGuard
         cnt = _cnt;
         startAccumulation = _startAccumulation;
         endAccumulation = _endAccumulation;
-        farmContract = _farmContract;
         upfrontUnlock = _upfrontUnlock;
         preMaturePenalty = _preMaturePenalty;
         l2Burner = _burner;
@@ -124,6 +122,10 @@ contract RewardManager is Ownable, ReentrancyGuard
     function whitelistAddress(address _excludeAddress) external onlyOwner{
         excludedAddresses[_excludeAddress] = true;
     }
+
+    function addRewardDistributor(address _distributor) external onlyOwner{
+        rewardDistributor[_distributor] = true;
+    }
         
     function handleRewardsForUser(
         address user,
@@ -132,7 +134,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 pid,
         uint256 rewardDebt
     ) external {
-        require(msg.sender == farmContract,"Not Farm Contract");
+        require(rewardDistributor[msg.sender],"Not a valid RewardDistributor");
         if(rewardAmount > 0){
             if(excludedAddresses[user]){
                 cnt.safeTransfer(user, rewardAmount);
