@@ -105,7 +105,7 @@ contract StakingPool is
         feeAddress = _feeAddress;
         isRewardManagerEnabled = false;
         rewardManager = address(0);
-        CNT = IERC20(_CNT);
+        CNT = _CNT;
     }
 
     function _msgSender()
