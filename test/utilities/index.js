@@ -54,3 +54,6 @@ async function createSLP(thisObject, name, tokenA, tokenB, amount) {
 function getBigNumber(amount, decimals = 18) {
   return BigNumber.from(amount).mul(BigNumber.from(BASE_TEN).pow(decimals));
 }
+
+module.exports = { getBigNumber };
+
