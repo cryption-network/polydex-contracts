@@ -119,12 +119,12 @@ contract RewardManager is Ownable, ReentrancyGuard
         upfrontUnlock = _newUpfrontUnlock;
     }
 
-    function whitelistAddress(address _excludeAddress) external onlyOwner{
-        excludedAddresses[_excludeAddress] = true;
+    function updateWhitelistAddress(address _excludeAddress, bool status) external onlyOwner{
+        excludedAddresses[_excludeAddress] = status;
     }
 
-    function addRewardDistributor(address _distributor) external onlyOwner{
-        rewardDistributor[_distributor] = true;
+    function updateRewardDistributor(address _distributor, bool status) external onlyOwner{
+        rewardDistributor[_distributor] = status;
     }
         
     function handleRewardsForUser(
