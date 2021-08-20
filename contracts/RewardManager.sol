@@ -26,11 +26,11 @@ contract RewardManager is Ownable, ReentrancyGuard
     //Pre mature penalty in percentage. This number is later divided by 1000 for calculations.
     uint256 public preMaturePenalty;
     
-    /// @notice start of Accumulation phase as a timestamp
-    uint256 public startAccumulation;
+    /// @notice start of Distribution phase as a timestamp
+    uint256 public startDistribution;
 
-    /// @notice end of accumulation phase as a timestamp
-    uint256 public endAccumulation;
+    /// @notice end of Distribution phase as a timestamp
+    uint256 public endDistribution;
     
     //Cryption Network Token (cnt) token address
     IERC20 public cnt;
@@ -58,16 +58,16 @@ contract RewardManager is Ownable, ReentrancyGuard
         _;
     }
 
-    modifier checkTime(uint256 _startAccumulation, uint256 _endAccumulation) {
-        require(_endAccumulation > _startAccumulation, "end time should be greater than start");
+    modifier checkTime(uint256 _startDistribution, uint256 _endDistribution) {
+        require(_endDistribution > _startDistribution, "end time should be greater than start");
         _;
     }
 
     /**
      * @notice Construct a new Reward Manager contract
      * @param _cnt cnt token address
-     * @param _startAccumulation start timestamp
-     * @param _endAccumulation end timestamp
+     * @param _startDistribution start timestamp
+     * @param _endDistribution end timestamp
      * @param _upfrontUnlock Upfront unlock percentage
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
      * @param _burner Burner for collecting preMaturePenalty
@@ -75,18 +75,18 @@ contract RewardManager is Ownable, ReentrancyGuard
      */
     constructor (
         IERC20 _cnt,
-        uint256 _startAccumulation,
-        uint256 _endAccumulation,
+        uint256 _startDistribution,
+        uint256 _endDistribution,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         address _burner) 
         checkPercentages(_upfrontUnlock, _preMaturePenalty)
-        checkTime(_startAccumulation, _endAccumulation)
+        checkTime(_startDistribution, _endDistribution)
 
     {
         cnt = _cnt;
-        startAccumulation = _startAccumulation;
-        endAccumulation = _endAccumulation;
+        startDistribution = _startDistribution;
+        endDistribution = _endDistribution;
         upfrontUnlock = _upfrontUnlock;
         preMaturePenalty = _preMaturePenalty;
         l2Burner = _burner;
@@ -103,13 +103,13 @@ contract RewardManager is Ownable, ReentrancyGuard
         preMaturePenalty = _newpreMaturePenalty;
     }
     
-    function updateAccumulationTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external 
+    function updateDistributionTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external 
     checkTime(_updatedStartTime, _updatedEndTime)
     onlyOwner
     {
-        require(startAccumulation > _getNow(), "Vesting already started can't update now");
-        startAccumulation = _updatedStartTime;
-        endAccumulation = _updatedEndTime;
+        require(startDistribution > _getNow(), "Vesting already started can't update now");
+        startDistribution = _updatedStartTime;
+        endDistribution = _updatedEndTime;
     }
     
     function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external 
@@ -148,7 +148,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function vest(address _user, uint256 _amount) internal {
-        require(_getNow() < startAccumulation, "Cannot vest");
+        require(_getNow() < startDistribution, "Cannot vest");
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
@@ -179,14 +179,14 @@ contract RewardManager is Ownable, ReentrancyGuard
 
     function _availableDrawDownAmount(address _user) internal view returns (uint256) {
         uint256 currentTime = _getNow();
-        if (currentTime < startAccumulation) {
+        if (currentTime < startDistribution) {
             return 0;
-        } else if (currentTime >= endAccumulation || totalDrawn[_user] == vestedAmount[_user]) {
+        } else if (currentTime >= endDistribution || totalDrawn[_user] == vestedAmount[_user]) {
             return _remainingBalance(_user);
         }
         else {
-            uint256 elapsedTime = currentTime.sub(startAccumulation);
-            uint256 _totalVestingTime = endAccumulation.sub(startAccumulation);
+            uint256 elapsedTime = currentTime.sub(startDistribution);
+            uint256 _totalVestingTime = endDistribution.sub(startDistribution);
             return vestedAmount[_user].mul(elapsedTime).div(_totalVestingTime).sub(totalDrawn[_user]);
         }
     }
@@ -201,7 +201,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
     function drawDown() external nonReentrant returns (uint256) {
-        require(_getNow() > startAccumulation, "Vesting not yet started");
+        require(_getNow() > startDistribution, "Vesting not yet started");
         return _drawDown(msg.sender);
     }
     
