@@ -217,7 +217,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Draws down any vested tokens due
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function drawDown() external nonReentrant returns (uint256) {
+    function drawDown() external nonReentrant {
         require(_getNow() > startDistribution, "Vesting not yet started");
         return _drawDown(msg.sender);
     }
@@ -230,7 +230,7 @@ contract RewardManager is Ownable, ReentrancyGuard
             address _beneficiary = msg.sender;
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
-            uint256 drawn = _drawDown(_beneficiary);
+            _drawDown(_beneficiary);
             (,,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
             uint256 effectivePercentage = 1000 - preMaturePenalty;
@@ -246,11 +246,11 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
 
     
-    function _drawDown(address _beneficiary) internal returns (uint256) {
+    function _drawDown(address _beneficiary) internal {
         require(vestedAmount[_beneficiary] > 0, "No vesting found");
 
         uint256 amount = _availableDrawDownAmount(_beneficiary);
-        if(amount == 0) return 0;
+        if(amount == 0) return;
 
         if(_getNow() > endDistribution && totalDrawn[_beneficiary] == 0){
             bonusReward[_beneficiary] = amount.mul(bonusPercentage).div(1000);
@@ -267,8 +267,6 @@ contract RewardManager is Ownable, ReentrancyGuard
         // Issue tokens to beneficiary
         cnt.safeTransfer(_beneficiary, amount.add(bonusReward[_beneficiary]));
         emit DrawDown(_beneficiary, amount, bonusReward[_beneficiary]);
-
-        return amount;
     }
 
 }
