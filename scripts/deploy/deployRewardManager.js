@@ -6,10 +6,11 @@ async function main() {
   const RewardManager = await hre.ethers.getContractFactory("RewardManager");
   const rewardManager = await RewardManager.deploy(
     ConstructorParams.CNT_TOKEN,
-    ConstructorParams.startAccumulationTime,
-    ConstructorParams.endAccumulationTime,
+    ConstructorParams.startDistributionTime,
+    ConstructorParams.endDistributionTime,
     ConstructorParams.upfrontUnlockPercentage,
     ConstructorParams.preMaturePenaltyPercentage,
+    ConstructorParams.bonusPercentage,
     ConstructorParams.L2Burner
   );
 
@@ -21,10 +22,11 @@ async function main() {
     address: rewardManager.address,
     constructorArguments: [
       ConstructorParams.CNT_TOKEN,
-      ConstructorParams.startAccumulationTime,
-      ConstructorParams.endAccumulationTime,
+      ConstructorParams.startDistributionTime,
+      ConstructorParams.endDistributionTime,
       ConstructorParams.upfrontUnlockPercentage,
       ConstructorParams.preMaturePenaltyPercentage,
+      ConstructorParams.bonusPercentage,
       ConstructorParams.L2Burner
     ],
   });
