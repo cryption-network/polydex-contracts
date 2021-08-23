@@ -162,8 +162,8 @@ contract RewardManager is Ownable, ReentrancyGuard
         }
     }
     
-        require(_getNow() < startDistribution, "Cannot vest");
     function _vest(address _user, uint256 _amount) internal {
+        require(_getNow() < startDistribution, " Cannot vest in distribution phase");
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
