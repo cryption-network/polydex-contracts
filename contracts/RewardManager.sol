@@ -226,7 +226,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function preMatureDraw() external nonReentrant returns (bool) {
+    function preMatureDraw() external nonReentrant {
             address _beneficiary = msg.sender;
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
@@ -242,7 +242,6 @@ contract RewardManager is Ownable, ReentrancyGuard
             cnt.safeTransfer(l2Burner, burnAmount);
             emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
     
-            return true;
     }
 
     
