@@ -229,19 +229,21 @@ contract RewardManager is Ownable, ReentrancyGuard
     function preMatureDraw() external nonReentrant {
             address _beneficiary = msg.sender;
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
-           
-            _drawDown(_beneficiary);
-            (,,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
-            uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
-            uint256 effectivePercentage = 1000 - preMaturePenalty;
-            uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
 
-            totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
-            burntAmount[_beneficiary] = burntAmount[_beneficiary].add(burnAmount);
-            cnt.safeTransfer(_beneficiary, effectiveAmount);
-            cnt.safeTransfer(l2Burner, burnAmount);
-            emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
-    
+            _drawDown(_beneficiary);
+            
+            (,,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
+            if(remainingBalance > 0){
+                uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
+                uint256 effectivePercentage = 1000 - preMaturePenalty;
+                uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
+
+                totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
+                burntAmount[_beneficiary] = burntAmount[_beneficiary].add(burnAmount);
+                cnt.safeTransfer(_beneficiary, effectiveAmount);
+                cnt.safeTransfer(l2Burner, burnAmount);
+                emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
+            }
     }
 
     
