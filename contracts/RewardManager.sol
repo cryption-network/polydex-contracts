@@ -25,6 +25,9 @@ contract RewardManager is Ownable, ReentrancyGuard
     
     //Pre mature penalty in percentage. This number is later divided by 1000 for calculations.
     uint256 public preMaturePenalty;
+
+    //Bonus Rewards in percentage. This number is later divided by 1000 for calculations.
+    uint256 public bonusPercentage;
     
     /// @notice start of Distribution phase as a timestamp
     uint256 public startDistribution;
@@ -44,11 +47,14 @@ contract RewardManager is Ownable, ReentrancyGuard
     /// @notice total tokens burnt per beneficiary
     mapping(address => uint256) public burntAmount;
 
+    /// @notice bonus rewards entitled per beneficiary
+    mapping(address => uint256) public bonusReward;
+
     /// @notice event emitted when a vesting schedule is created
     event Vested(address indexed _beneficiary, uint256 indexed value);
     
     /// @notice event emitted when a successful drawn down of vesting tokens is made
-    event DrawDown(address indexed _beneficiary, uint256 indexed _amount);
+    event DrawDown(address indexed _beneficiary, uint256 indexed _amount, uint256 indexed bonus);
     
      /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
     event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
@@ -70,6 +76,7 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @param _endDistribution end timestamp
      * @param _upfrontUnlock Upfront unlock percentage
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
+     * @param _bonusPercentage Bonus rewards percentage for user who hasn't drawn any rewards untill endDistribution
      * @param _burner Burner for collecting preMaturePenalty
      * @dev deployer of contract on constructor is set as owner
      */
@@ -79,6 +86,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 _endDistribution,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
+        uint256 _bonusPercentage,
         address _burner) 
         checkPercentages(_upfrontUnlock, _preMaturePenalty)
         checkTime(_startDistribution, _endDistribution)
@@ -89,6 +97,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         endDistribution = _endDistribution;
         upfrontUnlock = _upfrontUnlock;
         preMaturePenalty = _preMaturePenalty;
+        bonusPercentage = _bonusPercentage;
         l2Burner = _burner;
     }
         
@@ -101,6 +110,12 @@ contract RewardManager is Ownable, ReentrancyGuard
     onlyOwner
     {
         preMaturePenalty = _newpreMaturePenalty;
+    }
+
+    function updateBonusPercentage(uint256 _newBonusPercentage) external 
+    onlyOwner
+    {
+        bonusPercentage = _newBonusPercentage;
     }
     
     function updateDistributionTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external 
@@ -163,16 +178,18 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @return totalDrawnAmount total token drawn by user
      * @return amountBurnt total amount burnt while pre maturely drawing
      * @return claimable token available to be claimed
+     * @return bonusRewards tokens a user will get if nothing has been withdrawn untill endDistribution
      * @return stillDue tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
     public view
-    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 stillDue) {
+    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 bonusRewards, uint256 stillDue) {
         return (
         vestedAmount[_user],
         totalDrawn[_user],
         burntAmount[_user],
         _availableDrawDownAmount(_user),
+        bonusReward[_user],
         _remainingBalance(_user)
         );
     }
@@ -214,7 +231,7 @@ contract RewardManager is Ownable, ReentrancyGuard
             require(_remainingBalance(_beneficiary) > 0, "Nothing left to draw");
            
             uint256 drawn = _drawDown(_beneficiary);
-            (,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
+            (,,,,,uint256 remainingBalance) = vestingInfo(_beneficiary);
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
             uint256 effectivePercentage = 1000 - preMaturePenalty;
             uint256 effectiveAmount = remainingBalance.mul(effectivePercentage).div(1000);
@@ -235,6 +252,9 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 amount = _availableDrawDownAmount(_beneficiary);
         if(amount == 0) return 0;
 
+        if(_getNow() > endDistribution && totalDrawn[_beneficiary] == 0){
+            bonusReward[_beneficiary] = amount.mul(bonusPercentage).div(1000);
+        }
         // Increase total drawn amount
         totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(amount);
 
@@ -245,9 +265,8 @@ contract RewardManager is Ownable, ReentrancyGuard
         );
 
         // Issue tokens to beneficiary
-        cnt.safeTransfer(_beneficiary, amount);
-
-        emit DrawDown(_beneficiary, amount);
+        cnt.safeTransfer(_beneficiary, amount.add(bonusReward[_beneficiary]));
+        emit DrawDown(_beneficiary, amount, bonusReward[_beneficiary]);
 
         return amount;
     }
