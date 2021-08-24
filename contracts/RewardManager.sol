@@ -11,6 +11,8 @@ contract RewardManager is Ownable, ReentrancyGuard
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
+    uint256 public bonusRewardsPool;
+
     // whitelisted rewardDistributors
     mapping (address => bool) public rewardDistributor;
     
@@ -266,6 +268,31 @@ contract RewardManager is Ownable, ReentrancyGuard
         // Issue tokens to beneficiary
         cnt.safeTransfer(_beneficiary, amount.add(bonusReward[_beneficiary]));
         emit DrawDown(_beneficiary, amount, bonusReward[_beneficiary]);
+    }
+
+    /**
+     * @notice Function to add Bonus Rewards for user who hasn't vested any amount untill endDistribution
+     * @dev Must be called directly by the owner
+     */
+    function addBonusRewards(uint256 _bonusRewards) external onlyOwner {
+        bonusRewardsPool = bonusRewardsPool.add(_bonusRewards);
+        cnt.safeTransferFrom(msg.sender, address(this), _bonusRewards);
+    }
+
+    /**
+     * @notice Function to remove any extra Bonus Rewards sent to this contract
+     * @dev Must be called directly by the owner
+     */
+    function removeBonusRewards(uint256 _bonusRewards) external onlyOwner {
+        uint256 cntBalance = cnt.balanceOf(address(this));
+        if(_bonusRewards > cntBalance){
+            bonusRewardsPool = bonusRewardsPool.sub(cntBalance);
+            cnt.safeTransfer(msg.sender, address(this), cntBalance);
+        }
+        else{
+            bonusRewardsPool = bonusRewardsPool.sub(_bonusRewards);
+            cnt.safeTransfer(msg.sender, address(this), _bonusRewards);
+        }
     }
 
 }
