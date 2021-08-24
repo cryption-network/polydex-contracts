@@ -283,16 +283,14 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Function to remove any extra Bonus Rewards sent to this contract
      * @dev Must be called directly by the owner
      */
-    function removeBonusRewards(uint256 _bonusRewards) external onlyOwner {
+    function removeBonusRewards() external onlyOwner {
         uint256 cntBalance = cnt.balanceOf(address(this));
-        if(_bonusRewards > cntBalance){
-            bonusRewardsPool = bonusRewardsPool.sub(cntBalance);
-            cnt.safeTransfer(msg.sender, address(this), cntBalance);
-        }
-        else{
-            bonusRewardsPool = bonusRewardsPool.sub(_bonusRewards);
-            cnt.safeTransfer(msg.sender, address(this), _bonusRewards);
-        }
+        bonusRewardsPool = 0;
+        if (cntBalance < bonusRewardsPool) {
+           cnt.safeTransfer(msg.sender, cntBalance);
+       } else {
+           cnt.safeTransfer(msg.sender, bonusRewardsPool);
+       }
     }
 
 }
