@@ -59,8 +59,8 @@ contract RewardManager is Ownable, ReentrancyGuard
      /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
     event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
 
-    modifier checkPercentages(uint256 _upfrontUnlock, uint256 _preMaturePenalty) {
-        require(_upfrontUnlock.add(_preMaturePenalty) <= 1000, "Invalid Percentages");
+    modifier checkPercentages(uint256 _percentage) {
+        require(_percentage <= 1000, "Invalid Percentages");
         _;
     }
 
@@ -88,7 +88,6 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 _preMaturePenalty,
         uint256 _bonusPercentage,
         address _burner) 
-        checkPercentages(_upfrontUnlock, _preMaturePenalty)
         checkTime(_startDistribution, _endDistribution)
 
     {
@@ -106,7 +105,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
 
     function updatePreMaturePenalty(uint256 _newpreMaturePenalty) external 
-    checkPercentages(upfrontUnlock, _newpreMaturePenalty) 
+    checkPercentages(_newpreMaturePenalty) 
     onlyOwner
     {
         preMaturePenalty = _newpreMaturePenalty;
@@ -128,7 +127,7 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
     
     function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external 
-    checkPercentages(_newUpfrontUnlock, preMaturePenalty) 
+    checkPercentages(_newUpfrontUnlock) 
     onlyOwner
     {
         upfrontUnlock = _newUpfrontUnlock;
