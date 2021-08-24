@@ -16,5 +16,10 @@
   "dfyn_Wmatic": "0x4c28f48448720e9000907bc2611f73022fdce1fa",
   "CNT_PER_BLOCK": "1300000000000000000",
   "START_BLOCK": "17360000",
-  "BONUS_END_BLOCK": "17360000"
+  "BONUS_END_BLOCK": "17360000",
+  "startAccumulationTime": "00",
+  "endAccumulationTime" : "00",
+  "farmContract": "0x7c3a78c3C2B6B90F6A523ae76cb8C2CbBA691464",
+  "upfrontUnlockPercentage": "300",
+  "preMaturePenaltyPercentage": "350"
 }
