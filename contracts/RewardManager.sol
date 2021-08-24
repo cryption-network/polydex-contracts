@@ -285,11 +285,12 @@ contract RewardManager is Ownable, ReentrancyGuard
      */
     function removeBonusRewards() external onlyOwner {
         uint256 cntBalance = cnt.balanceOf(address(this));
+        uint256 bonus = bonusRewardsPool;
         bonusRewardsPool = 0;
-        if (cntBalance < bonusRewardsPool) {
+        if (cntBalance < bonus) {
            cnt.safeTransfer(msg.sender, cntBalance);
        } else {
-           cnt.safeTransfer(msg.sender, bonusRewardsPool);
+           cnt.safeTransfer(msg.sender, bonus);
        }
     }
 
