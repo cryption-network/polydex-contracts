@@ -29,6 +29,7 @@ const advanceTimeAndBlock = async function (time) {
 
 const advanceTime = async function (time) {
   await ethers.provider.send("evm_increaseTime", [time]);
+  await ethers.provider.send("evm_mine");
 };
 
 const duration = {
