@@ -19,6 +19,14 @@ module.exports = {
       url: `https://rpc-mumbai.maticvigil.com`,
       accounts: [`0x${PRIVATE_KEY}`]
     },
+    arbitrum: {
+      url: 'https://arb1.arbitrum.io/rpc',
+      accounts: [`0x${PRIVATE_KEY}`]
+    },
+    arbitrumTest: {
+      url: 'https://rinkeby.arbitrum.io/rpc',
+      accounts: [`0x${PRIVATE_KEY}`]
+    },
   },
   solidity: {
     compilers: [
