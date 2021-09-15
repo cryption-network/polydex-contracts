@@ -117,7 +117,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     pathForToken0 requires the path that will be used by the PolydexRouter to swap the token0 to CNT.
     pathForToken1 requires the path that will be used by the PolydexRouter to swap the token1 to CNT.
     */
-    function convertLP(address token0, address[] calldata pathForToken0, address token1, address[] calldata pathForToken1) external nonReentrant() {
+    function convertLP(address token0, address[] calldata pathForToken0, address token1, address[] calldata pathForToken1) external onlyOwner nonReentrant() {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         IPolydexPair pair = IPolydexPair(factory.getPair(token0, token1));
@@ -142,7 +142,7 @@ contract ConverterV2 is Ownable, ReentrancyGuard {
     the ERC20 tokens to CNT. The CNT accumulated is used to allocate to different contracts as per their allocation share.
     path param requires the path that will be used by the Router to swap the token to CNT.
     */
-    function convertToken(address token, address[] calldata path) external nonReentrant() ensureNonZeroAddress(token) {
+    function convertToken(address token, address[] calldata path) external onlyOwner nonReentrant() ensureNonZeroAddress(token) {
         // At least we try to make front-running harder to do.
         require(msg.sender == tx.origin, "do not convert from contract");
         _swaptoCNT(token, path);
