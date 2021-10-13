@@ -23,6 +23,20 @@ interface IRewardManager {
     ) external;
 }
 
+interface ILiquidityManager {
+    function handleDeposit(
+        address token,
+        uint256 amount,
+        address user
+    ) external;
+
+    function handleWithdraw(
+        address token,
+        uint256 amount,
+        address user
+    ) external returns (uint256);
+}
+
 contract StakingPool is
     Ownable,
     ContextMixin,
@@ -89,6 +103,11 @@ contract StakingPool is
 
     address public rewardManager;
 
+    //Trigger for LiquidityManager mode
+    bool public isLiquidityManagerEnabled;
+
+    address public liquidityManager;
+
     IERC20 public CNT;
 
     event Deposit(address indexed user, uint256 amount);
@@ -105,6 +124,8 @@ contract StakingPool is
         feeAddress = _feeAddress;
         isRewardManagerEnabled = false;
         rewardManager = address(0);
+        isLiquidityManagerEnabled = false;
+        liquidityManager = address(0);
         CNT = _CNT;
     }
 
@@ -129,6 +150,26 @@ contract StakingPool is
         require(_rewardManager != address(0), "Reward Manager address is zero");
         massUpdatePools();
         rewardManager = _rewardManager;
+    }
+
+    function updateLiquidityManagerMode(bool _isLiquidityManagerEnabled)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        isLiquidityManagerEnabled = _isLiquidityManagerEnabled;
+    }
+
+    function updateLiquidityManager(address _liquidityManager)
+        external
+        onlyOwner
+    {
+        require(
+            _liquidityManager != address(0),
+            "Liquidity Manager address is zero"
+        );
+        massUpdatePools();
+        liquidityManager = _liquidityManager;
     }
 
     /**
@@ -308,7 +349,7 @@ contract StakingPool is
             return;
         }
         uint256 lpSupply = totalInputTokensStaked;
-    
+
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number;
             return;
@@ -326,7 +367,7 @@ contract StakingPool is
             : farmInfo.endBlock;
     }
 
-    function massUpdatePools() public{
+    function massUpdatePools() public {
         for (uint256 i = 0; i < rewardPool.length; i++) {
             updatePool(i);
         }
@@ -394,21 +435,32 @@ contract StakingPool is
             farmInfo.numFarmers++;
         }
         if (_amount > 0) {
+            uint256 beforeDepositAmount = user.amount;
             farmInfo.inputToken.safeTransferFrom(
                 address(_msgSender()),
                 address(this),
                 _amount
             );
             if (farmInfo.depositFeeBP > 0) {
-                uint256 depositFee = _amount
-                .mul(farmInfo.depositFeeBP)
-                .div(10000);
+                uint256 depositFee = _amount.mul(farmInfo.depositFeeBP).div(
+                    10000
+                );
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
                 user.amount = user.amount.add(_amount.sub(depositFee));
             } else {
                 user.amount = user.amount.add(_amount);
             }
-            
+            if (isLiquidityManagerEnabled) {
+                IERC20(farmInfo.inputToken).approve(
+                    address(liquidityManager),
+                    user.amount.sub(beforeDepositAmount)
+                );
+                ILiquidityManager(liquidityManager).handleDeposit(
+                    address(farmInfo.inputToken),
+                    user.amount.sub(beforeDepositAmount),
+                    address(this)
+                );
+            }
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
@@ -445,6 +497,13 @@ contract StakingPool is
         }
 
         if (_amount > 0) {
+            if (isLiquidityManagerEnabled) {
+                ILiquidityManager(liquidityManager).handleWithdraw(
+                    address(farmInfo.inputToken),
+                    _amount,
+                    address(this)
+                );
+            }
             user.amount = user.amount.sub(_amount);
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = _amount
@@ -605,7 +664,10 @@ contract StakingPool is
         farmInfo.depositFeeBP = _depositFeeBP;
     }
 
-    function changeFarmHarvestInterval(uint256 _harvestInterval) external onlyOwner {
+    function changeFarmHarvestInterval(uint256 _harvestInterval)
+        external
+        onlyOwner
+    {
         require(
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
             "add: invalid harvest interval"
