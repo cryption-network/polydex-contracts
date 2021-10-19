@@ -458,7 +458,7 @@ contract StakingPool is
                 ILiquidityManager(liquidityManager).handleDeposit(
                     address(farmInfo.inputToken),
                     user.amount.sub(beforeDepositAmount),
-                    address(this)
+                    _user
                 );
             }
         }
@@ -501,7 +501,7 @@ contract StakingPool is
                 ILiquidityManager(liquidityManager).handleWithdraw(
                     address(farmInfo.inputToken),
                     _amount,
-                    address(this)
+                    _user
                 );
             }
             user.amount = user.amount.sub(_amount);
