@@ -34,7 +34,7 @@ interface ILiquidityManager {
         address token,
         uint256 amount,
         address user
-    ) external returns (uint256);
+    ) external;
 }
 
 contract StakingPool is
@@ -452,7 +452,7 @@ contract StakingPool is
             }
             if (isLiquidityManagerEnabled) {
                 IERC20(farmInfo.inputToken).approve(
-                    address(liquidityManager),
+                    liquidityManager,
                     user.amount.sub(beforeDepositAmount)
                 );
                 ILiquidityManager(liquidityManager).handleDeposit(
@@ -532,7 +532,7 @@ contract StakingPool is
             ILiquidityManager(liquidityManager).handleWithdraw(
                 address(farmInfo.inputToken),
                 user.amount,
-                _msgSender()
+                msg.sender
             );
         }
         farmInfo.inputToken.safeTransfer(address(_msgSender()), user.amount);
