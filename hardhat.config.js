@@ -4,7 +4,6 @@ require("@nomiclabs/hardhat-waffle");
 require("solidity-coverage");
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const MATIC_NODE_API = process.env.MATIC_NODE_API;
 
 module.exports = {
   networks: {
@@ -12,7 +11,7 @@ module.exports = {
       url: "http://localhost:8545", // uses account 0 of the hardhat node to deploy
     },
     matic: {
-      url: MATIC_NODE_API,
+      url: 'https://polygon-rpc.com',
       accounts: [`0x${PRIVATE_KEY}`]
     },
     mumbai: {
