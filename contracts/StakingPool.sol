@@ -528,6 +528,13 @@ contract StakingPool is
      */
     function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
+        if (isLiquidityManagerEnabled) {
+            ILiquidityManager(liquidityManager).handleWithdraw(
+                address(farmInfo.inputToken),
+                user.amount,
+                _msgSender()
+            );
+        }
         farmInfo.inputToken.safeTransfer(address(_msgSender()), user.amount);
         emit EmergencyWithdraw(_msgSender(), user.amount);
         if (user.amount > 0) {
