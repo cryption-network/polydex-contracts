@@ -12,6 +12,8 @@ contract RewardManager is Ownable, ReentrancyGuard
     using SafeERC20 for IERC20;
 
     uint256 public bonusRewardsPool;
+    
+    address public rewardManagerFactory = owner();
 
     // whitelisted rewardDistributors
     mapping (address => bool) public rewardDistributor;
