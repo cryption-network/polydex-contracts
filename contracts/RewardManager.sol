@@ -205,7 +205,7 @@ contract RewardManager is Ownable, ReentrancyGuard
         else {
             uint256 elapsedTime = currentTime.sub(startDistribution);
             uint256 _totalVestingTime = endDistribution.sub(startDistribution);
-            return vestedAmount[_user].mul(elapsedTime).div(_totalVestingTime).sub(totalDrawn[_user]);
+            return _remainingBalance(_user).mul(elapsedTime).div(_totalVestingTime);
         }
     }
 
