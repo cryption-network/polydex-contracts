@@ -13,6 +13,15 @@ contract RewardManagerFactory is Ownable{
         uint256 startDistribution;
         uint256 endDistribution;
     }
+    
+    struct tempInfo{
+        uint256 _totalVested;
+        uint256 _totalDrawnAmount;
+        uint256 _amountBurnt;
+        uint256 _claimable;
+        uint256 _bonusRewards;
+        uint256 _stillDue;
+    }
 
     RewardManagerInfo[] public managers;
 
@@ -97,4 +106,92 @@ contract RewardManagerFactory is Ownable{
         require(_index <= managerIndex, "Invalid Index");
         delete managers[_index];
     }
+    
+    function userTotalVestingInfo(address _user)
+    public view
+    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 bonusRewards, uint256 stillDue){
+        tempInfo memory temp;
+        for(uint256 i = 0; i < totalRewardManagers; i++){
+            address rewardManagerAddress = managers[i].managerAddress;
+            if(rewardManagerAddress != address(0)){
+                RewardManager manager = RewardManager(rewardManagerAddress);
+                (temp._totalVested, temp._totalDrawnAmount, temp._amountBurnt, temp._claimable, temp._bonusRewards, temp._stillDue) = manager.vestingInfo(_user);
+            
+                totalVested += temp._totalVested;
+                totalDrawnAmount += temp._totalDrawnAmount;
+                amountBurnt += temp._amountBurnt;
+                claimable += temp._claimable;
+                bonusRewards += temp._bonusRewards;
+                stillDue += temp._stillDue;
+            }
+        }
+    }
+    
+    /**
+     * @notice Draws down any vested tokens due in all Reward Manager
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     */
+    function drawDown() external onlyOwner {
+         for(uint256 i = 0; i < totalRewardManagers; i++){
+            address rewardManagerAddress = managers[i].managerAddress;
+            if(rewardManagerAddress != address(0)){
+                RewardManager manager = RewardManager(rewardManagerAddress);
+                manager.drawDown(msg.sender);
+            }
+         }
+    }
+    
+    /**
+     * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     */
+    function preMatureDraw() external onlyOwner {
+            for(uint256 i = 0; i < totalRewardManagers; i++){
+            address rewardManagerAddress = managers[i].managerAddress;
+            if(rewardManagerAddress != address(0)){
+                RewardManager manager = RewardManager(rewardManagerAddress);
+                manager.preMatureDraw(msg.sender);
+            }
+            }
+    }
+
+    
+
+    function updatePreMaturePenalty(uint256 _index, uint256 _newpreMaturePenalty) external 
+    onlyOwner
+    {
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updatePreMaturePenalty(_newpreMaturePenalty);
+    }
+    
+    function updateBonusPercentage(uint256 _index, uint256 _newBonusPercentage) external 
+    onlyOwner
+    {
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updateBonusPercentage(_newBonusPercentage);
+    }
+    
+    function updateDistributionTime(uint256 _index, uint256 _updatedStartTime, uint256 _updatedEndTime) external 
+    onlyOwner
+    {
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updateDistributionTime(_updatedStartTime, _updatedEndTime);
+    }
+    
+    function updateUpfrontUnlock(uint256 _index, uint256 _newUpfrontUnlock) external 
+    onlyOwner
+    {
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updateUpfrontUnlock(_newUpfrontUnlock);
+    }
+
+    function updateWhitelistAddress(uint256 _index, address _excludeAddress, bool status) external onlyOwner{
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updateWhitelistAddress(_excludeAddress, status);
+    }
+
+    function updateRewardDistributor(uint256 _index, address _distributor, bool status) external onlyOwner{
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.updateRewardDistributor(_distributor, status);
+    } 
 }
