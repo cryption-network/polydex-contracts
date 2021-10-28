@@ -220,17 +220,16 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @notice Draws down any vested tokens due
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function drawDown() external nonReentrant {
+    function drawDown(address _user) external onlyOwner nonReentrant {
         require(_getNow() > startDistribution, "Vesting not yet started");
-        return _drawDown(msg.sender);
+        return _drawDown(_user);
     }
     
     /**
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
      */
-    function preMatureDraw() external nonReentrant {
-            address _beneficiary = msg.sender;
+    function preMatureDraw(address _beneficiary) external onlyOwner nonReentrant {
             uint256 remainingBalance = _remainingBalance(_beneficiary);
             require(remainingBalance > 0, "Nothing left to draw");
 
