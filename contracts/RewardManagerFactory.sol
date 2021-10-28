@@ -95,11 +95,7 @@ contract RewardManagerFactory is Ownable{
             _startDistribution,
             _endDistribution
         );
-        managerIndex++;
-    }
-    
-    function getTotalRewardManagers() public view returns (uint256){
-        return managers.length;
+        totalRewardManagers++;
     }
     
     function removeRewardManager(uint256 _index) public onlyOwner {
