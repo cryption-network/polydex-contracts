@@ -24,8 +24,6 @@ contract RewardManagerFactory is Ownable{
     }
 
     RewardManagerInfo[] public managers;
-
-    uint256 public managerIndex;
     
     uint256 public totalRewardManagers;
 
@@ -99,7 +97,7 @@ contract RewardManagerFactory is Ownable{
     }
     
     function removeRewardManager(uint256 _index) public onlyOwner {
-        require(_index <= managerIndex, "Invalid Index");
+        require(_index <= totalRewardManagers, "Invalid Index");
         delete managers[_index];
     }
     
