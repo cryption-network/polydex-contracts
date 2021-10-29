@@ -16,10 +16,5 @@
   "dfyn_Wmatic": "0x4c28f48448720e9000907bc2611f73022fdce1fa",
   "CNT_PER_BLOCK": "750000000000000000",
   "START_BLOCK": "17360000",
-  "BONUS_END_BLOCK": "17360000",
-  "startDistributionTime": "1637877600",
-  "endDistributionTime" : "1648245600",
-  "upfrontUnlockPercentage": "250",
-  "preMaturePenaltyPercentage": "350",
-  "bonusPercentage": "150"
+  "BONUS_END_BLOCK": "17360000"
 }
