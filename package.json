@@ -27,8 +27,8 @@
     "deployConverterV2:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_converterV2.js",
     "deployStakingPool:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deploy_staking_pool.js",
     "deployStakingPool:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deploy_staking_pool.js",
-    "deployRewardManager:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployRewardManager.js",
-    "deployRewardManager:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRewardManager.js"
+    "deployRewardManagerFactory:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployRewardManagerFactory.js",
+    "deployRewardManagerFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRewardManagerFactory.js"
   },
   "author": "",
   "license": "ISC",
