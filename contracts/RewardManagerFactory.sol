@@ -122,13 +122,15 @@ contract RewardManagerFactory is Ownable {
                     user._bonusRewards,
                     user._stillDue
                 ) = manager.vestingInfo(_user);
-
-                totalVested += user._totalVested;
-                totalDrawnAmount += user._totalDrawnAmount;
-                amountBurnt += user._amountBurnt;
-                claimable += user._claimable;
-                bonusRewards += user._bonusRewards;
-                stillDue += user._stillDue;
+                
+                if(user._totalVested) {
+                    totalVested += user._totalVested;
+                    totalDrawnAmount += user._totalDrawnAmount;
+                    amountBurnt += user._amountBurnt;
+                    claimable += user._claimable;
+                    bonusRewards += user._bonusRewards;
+                    stillDue += user._stillDue;
+                }
             }
         }
     }
