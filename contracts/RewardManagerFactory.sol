@@ -14,7 +14,7 @@ contract RewardManagerFactory is Ownable {
         uint256 endDistribution;
     }
 
-    struct userInfo {
+    struct UserInfo {
         uint256 _totalVested;
         uint256 _totalDrawnAmount;
         uint256 _amountBurnt;
@@ -63,7 +63,7 @@ contract RewardManagerFactory is Ownable {
 
         require(
             _endDistribution > _startDistribution,
-            "Distribution End Time should be greater than crowdsale StartTime"
+            "EndDistribution should be more than startDistribution"
         );
 
         RewardManager newManager = new RewardManager(
@@ -109,7 +109,7 @@ contract RewardManagerFactory is Ownable {
             uint256 stillDue
         )
     {
-        userInfo memory user;
+        UserInfo memory user;
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
