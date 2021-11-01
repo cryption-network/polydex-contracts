@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 
 import "./RewardManager.sol";
 
-contract RewardManagerFactory is Ownable{
+contract RewardManagerFactory is Ownable {
     using SafeMath for uint256;
     using SafeMath for uint128;
 
@@ -13,8 +13,8 @@ contract RewardManagerFactory is Ownable{
         uint256 startDistribution;
         uint256 endDistribution;
     }
-    
-    struct tempInfo{
+
+    struct tempInfo {
         uint256 _totalVested;
         uint256 _totalDrawnAmount;
         uint256 _amountBurnt;
@@ -24,7 +24,7 @@ contract RewardManagerFactory is Ownable{
     }
 
     RewardManagerInfo[] public managers;
-    
+
     uint256 public totalRewardManagers;
 
     event RewardManagerLaunched(
@@ -51,26 +51,22 @@ contract RewardManagerFactory is Ownable{
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         uint256 _bonusPercentage,
-        address _burner) 
-        public
-        onlyOwner
-    {
-
+        address _burner
+    ) public onlyOwner {
         require(address(_cnt) != address(0), "Cant be Zero address");
         require(address(_burner) != address(0), "Burner Cant be Zero address");
-        
+
         require(
             _startDistribution >= block.timestamp,
             "Start time should be greater than current"
         ); // ideally at least 24 hours more to give investors time
-        
+
         require(
             _endDistribution > _startDistribution,
             "Distribution End Time should be greater than crowdsale StartTime"
         );
 
-        RewardManager newManager = new RewardManager
-        (
+        RewardManager newManager = new RewardManager(
             _cnt,
             _startDistribution,
             _endDistribution,
@@ -81,7 +77,7 @@ contract RewardManagerFactory is Ownable{
         );
 
         managers.push(
-            RewardManagerInfo({ 
+            RewardManagerInfo({
                 managerAddress: address(newManager),
                 startDistribution: _startDistribution,
                 endDistribution: _endDistribution
@@ -95,22 +91,38 @@ contract RewardManagerFactory is Ownable{
         );
         totalRewardManagers++;
     }
-    
+
     function removeRewardManager(uint256 _index) public onlyOwner {
         require(_index <= totalRewardManagers, "Invalid Index");
         delete managers[_index];
     }
-    
+
     function userTotalVestingInfo(address _user)
-    public view
-    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 bonusRewards, uint256 stillDue){
+        public
+        view
+        returns (
+            uint256 totalVested,
+            uint256 totalDrawnAmount,
+            uint256 amountBurnt,
+            uint256 claimable,
+            uint256 bonusRewards,
+            uint256 stillDue
+        )
+    {
         tempInfo memory temp;
-        for(uint256 i = 0; i < totalRewardManagers; i++){
+        for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
-            if(rewardManagerAddress != address(0)){
+            if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
-                (temp._totalVested, temp._totalDrawnAmount, temp._amountBurnt, temp._claimable, temp._bonusRewards, temp._stillDue) = manager.vestingInfo(_user);
-            
+                (
+                    temp._totalVested,
+                    temp._totalDrawnAmount,
+                    temp._amountBurnt,
+                    temp._claimable,
+                    temp._bonusRewards,
+                    temp._stillDue
+                ) = manager.vestingInfo(_user);
+
                 totalVested += temp._totalVested;
                 totalDrawnAmount += temp._totalDrawnAmount;
                 amountBurnt += temp._amountBurnt;
@@ -120,72 +132,83 @@ contract RewardManagerFactory is Ownable{
             }
         }
     }
-    
+
     /**
      * @notice Draws down any vested tokens due in all Reward Manager
-     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
     function drawDown() external onlyOwner {
-         for(uint256 i = 0; i < totalRewardManagers; i++){
+        for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
-            if(rewardManagerAddress != address(0)){
+            if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
                 manager.drawDown(msg.sender);
             }
-         }
+        }
     }
-    
+
     /**
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
-     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
     function preMatureDraw() external onlyOwner {
-            for(uint256 i = 0; i < totalRewardManagers; i++){
+        for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
-            if(rewardManagerAddress != address(0)){
+            if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
                 manager.preMatureDraw(msg.sender);
             }
-            }
+        }
     }
 
-    
-
-    function updatePreMaturePenalty(uint256 _index, uint256 _newpreMaturePenalty) external 
-    onlyOwner
-    {
+    function updatePreMaturePenalty(
+        uint256 _index,
+        uint256 _newpreMaturePenalty
+    ) external onlyOwner {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updatePreMaturePenalty(_newpreMaturePenalty);
     }
-    
-    function updateBonusPercentage(uint256 _index, uint256 _newBonusPercentage) external 
-    onlyOwner
+
+    function updateBonusPercentage(uint256 _index, uint256 _newBonusPercentage)
+        external
+        onlyOwner
     {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateBonusPercentage(_newBonusPercentage);
     }
-    
-    function updateDistributionTime(uint256 _index, uint256 _updatedStartTime, uint256 _updatedEndTime) external 
-    onlyOwner
-    {
+
+    function updateDistributionTime(
+        uint256 _index,
+        uint256 _updatedStartTime,
+        uint256 _updatedEndTime
+    ) external onlyOwner {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateDistributionTime(_updatedStartTime, _updatedEndTime);
     }
-    
-    function updateUpfrontUnlock(uint256 _index, uint256 _newUpfrontUnlock) external 
-    onlyOwner
+
+    function updateUpfrontUnlock(uint256 _index, uint256 _newUpfrontUnlock)
+        external
+        onlyOwner
     {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateUpfrontUnlock(_newUpfrontUnlock);
     }
 
-    function updateWhitelistAddress(uint256 _index, address _excludeAddress, bool status) external onlyOwner{
+    function updateWhitelistAddress(
+        uint256 _index,
+        address _excludeAddress,
+        bool status
+    ) external onlyOwner {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateWhitelistAddress(_excludeAddress, status);
     }
 
-    function updateRewardDistributor(uint256 _index, address _distributor, bool status) external onlyOwner{
+    function updateRewardDistributor(
+        uint256 _index,
+        address _distributor,
+        bool status
+    ) external onlyOwner {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateRewardDistributor(_distributor, status);
-    } 
+    }
 }
