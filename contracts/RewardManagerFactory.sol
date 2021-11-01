@@ -148,7 +148,16 @@ contract RewardManagerFactory is Ownable {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
-                manager.drawDown(msg.sender);
+                (
+                    ,
+                    ,
+                    ,
+                    uint256 userClaimable,
+                    ,
+                ) = manager.vestingInfo(msg.sender);
+                if ( userClaimable > 0) {
+                    manager.drawDown(msg.sender);
+                }
             }
         }
     }
@@ -162,7 +171,16 @@ contract RewardManagerFactory is Ownable {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
-                manager.preMatureDraw(msg.sender);
+                (
+                    ,
+                    ,
+                    ,
+                    ,
+                    uint256 userStillDue,
+                ) = manager.vestingInfo(msg.sender);
+                if ( userStillDue > 0) {
+                    manager.preMatureDraw(msg.sender);
+                }
             }
         }
     }
