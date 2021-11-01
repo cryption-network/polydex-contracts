@@ -27,6 +27,8 @@ contract RewardManagerFactory is Ownable {
 
     uint256 public totalRewardManagers;
 
+    mapping(address => uint256) public mangerIndex;
+
     event RewardManagerLaunched(
         address indexed mangerAddress,
         uint256 indexed startDistributionTime,
@@ -83,6 +85,8 @@ contract RewardManagerFactory is Ownable {
                 endDistribution: _endDistribution
             })
         ); //stacking up every crowdsale info ever made to crowdsales variable
+
+        mangerIndex[address(newManager)] = totalRewardManagers; //mapping every manager address to its index in the array
 
         emit RewardManagerLaunched(
             address(newManager),
