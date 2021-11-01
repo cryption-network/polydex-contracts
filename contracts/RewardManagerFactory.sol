@@ -14,7 +14,7 @@ contract RewardManagerFactory is Ownable {
         uint256 endDistribution;
     }
 
-    struct tempInfo {
+    struct userInfo {
         uint256 _totalVested;
         uint256 _totalDrawnAmount;
         uint256 _amountBurnt;
@@ -109,26 +109,26 @@ contract RewardManagerFactory is Ownable {
             uint256 stillDue
         )
     {
-        tempInfo memory temp;
+        userInfo memory user;
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
                 (
-                    temp._totalVested,
-                    temp._totalDrawnAmount,
-                    temp._amountBurnt,
-                    temp._claimable,
-                    temp._bonusRewards,
-                    temp._stillDue
+                    user._totalVested,
+                    user._totalDrawnAmount,
+                    user._amountBurnt,
+                    user._claimable,
+                    user._bonusRewards,
+                    user._stillDue
                 ) = manager.vestingInfo(_user);
 
-                totalVested += temp._totalVested;
-                totalDrawnAmount += temp._totalDrawnAmount;
-                amountBurnt += temp._amountBurnt;
-                claimable += temp._claimable;
-                bonusRewards += temp._bonusRewards;
-                stillDue += temp._stillDue;
+                totalVested += user._totalVested;
+                totalDrawnAmount += user._totalDrawnAmount;
+                amountBurnt += user._amountBurnt;
+                claimable += user._claimable;
+                bonusRewards += user._bonusRewards;
+                stillDue += user._stillDue;
             }
         }
     }
