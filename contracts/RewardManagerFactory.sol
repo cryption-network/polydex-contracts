@@ -279,4 +279,27 @@ contract RewardManagerFactory is Ownable {
     {
         rewardDistributor[_distributor] = status;
     }
+
+    function addBonusRewards(uint256 _index, uint256 _bonusRewards)
+        external
+        onlyOwner
+        validateRewardManagerByIndex(_index)
+    {
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        cnt.safeTransferFrom(msg.sender, address(manager), _bonusRewards);
+        manager.addBonusRewards(_bonusRewards);
+    }
+
+    function removeBonusRewards(uint256 _index, address _owner)
+        external
+        onlyOwner
+        validateRewardManagerByIndex(_index)
+    {
+        require(
+            address(_owner) != address(0),
+            "Address of owner receiving rewards should not be zero"
+        );
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        manager.removeBonusRewards(_owner);
+    }
 }
