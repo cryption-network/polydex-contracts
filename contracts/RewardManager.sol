@@ -14,9 +14,6 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     address public rewardManagerFactory = owner();
 
-    // whitelisted rewardDistributors
-    mapping(address => bool) public rewardDistributor;
-
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
     mapping(address => bool) public excludedAddresses;
 
@@ -158,21 +155,13 @@ contract RewardManager is Ownable, ReentrancyGuard {
         excludedAddresses[_excludeAddress] = status;
     }
 
-    function updateRewardDistributor(address _distributor, bool status)
-        external
-        onlyOwner
-    {
-        rewardDistributor[_distributor] = status;
-    }
-
     function handleRewardsForUser(
         address user,
         uint256 rewardAmount,
         uint256 timestamp,
         uint256 pid,
         uint256 rewardDebt
-    ) external {
-        require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
+    ) external onlyOwner {
         if (rewardAmount > 0) {
             if (excludedAddresses[user]) {
                 cnt.safeTransfer(user, rewardAmount);

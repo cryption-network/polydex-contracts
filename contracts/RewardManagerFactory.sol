@@ -29,11 +29,24 @@ contract RewardManagerFactory is Ownable {
 
     mapping(address => uint256) public mangerIndex;
 
+    // whitelisted rewardDistributors
+    mapping(address => bool) public rewardDistributor;
+
     event RewardManagerLaunched(
         address indexed mangerAddress,
         uint256 indexed startDistributionTime,
         uint256 indexed endDistributionTime
     );
+
+    modifier validateRewardManagerByIndex(uint256 _index) {
+        require(_index < managers.length, "Reward Manager does not exist");
+        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        require(
+            address(manager) != address(0),
+            "Reward Manager does not exist"
+        );
+        _;
+    }
 
     /**
      * @notice Creates a new Reward Manager contract and registers it in the Factory Contract
@@ -139,6 +152,31 @@ contract RewardManagerFactory is Ownable {
         }
     }
 
+    function handleRewardsForUser(
+        address user,
+        uint256 rewardAmount,
+        uint256 timestamp,
+        uint256 pid,
+        uint256 rewardDebt
+    ) external {
+        require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
+        //get the most active reward manager
+        RewardManager manager = RewardManager(
+            managers[totalRewardManagers - 1].managerAddress
+        );
+        require(address(manager) != address(0), "No Reward Manager Added");
+        /* No use of if condition here to check if AddressZero since funds are transferred before calling handleRewardsForUser. Require is a must
+        So if there is accidentally no strategy linked, it goes into else resulting in loss of user's funds.
+        */
+        manager.handleRewardsForUser(
+            user,
+            rewardAmount,
+            timestamp,
+            pid,
+            rewardDebt
+        );
+    }
+
     /**
      * @notice Draws down any vested tokens due in all Reward Manager
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
@@ -180,7 +218,7 @@ contract RewardManagerFactory is Ownable {
     function updatePreMaturePenalty(
         uint256 _index,
         uint256 _newpreMaturePenalty
-    ) external onlyOwner {
+    ) external onlyOwner validateRewardManagerByIndex(_index) {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updatePreMaturePenalty(_newpreMaturePenalty);
     }
@@ -188,6 +226,7 @@ contract RewardManagerFactory is Ownable {
     function updateBonusPercentage(uint256 _index, uint256 _newBonusPercentage)
         external
         onlyOwner
+        validateRewardManagerByIndex(_index)
     {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateBonusPercentage(_newBonusPercentage);
@@ -197,7 +236,7 @@ contract RewardManagerFactory is Ownable {
         uint256 _index,
         uint256 _updatedStartTime,
         uint256 _updatedEndTime
-    ) external onlyOwner {
+    ) external onlyOwner validateRewardManagerByIndex(_index) {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateDistributionTime(_updatedStartTime, _updatedEndTime);
     }
@@ -205,6 +244,7 @@ contract RewardManagerFactory is Ownable {
     function updateUpfrontUnlock(uint256 _index, uint256 _newUpfrontUnlock)
         external
         onlyOwner
+        validateRewardManagerByIndex(_index)
     {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateUpfrontUnlock(_newUpfrontUnlock);
@@ -214,17 +254,15 @@ contract RewardManagerFactory is Ownable {
         uint256 _index,
         address _excludeAddress,
         bool status
-    ) external onlyOwner {
+    ) external onlyOwner validateRewardManagerByIndex(_index) {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateWhitelistAddress(_excludeAddress, status);
     }
 
-    function updateRewardDistributor(
-        uint256 _index,
-        address _distributor,
-        bool status
-    ) external onlyOwner {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
-        manager.updateRewardDistributor(_distributor, status);
+    function updateRewardDistributor(address _distributor, bool status)
+        external
+        onlyOwner
+    {
+        rewardDistributor[_distributor] = status;
     }
 }
