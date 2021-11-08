@@ -253,6 +253,8 @@ contract RewardManagerFactory is Ownable {
     ) external onlyOwner validateRewardManagerByIndex(_index) {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         manager.updateDistributionTime(_updatedStartTime, _updatedEndTime);
+        managers[_index].startDistribution = _updatedStartTime;
+        managers[_index].endDistribution = _updatedEndTime;
     }
 
     function updateUpfrontUnlock(uint256 _index, uint256 _newUpfrontUnlock)
