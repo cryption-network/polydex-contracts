@@ -279,7 +279,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
         require(remainingBalance > 0, "Nothing left to draw");
 
         _drawDown(_beneficiary);
-
+        remainingBalance = _remainingBalance(_beneficiary);
         if (remainingBalance > 0) {
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(
                 1000
