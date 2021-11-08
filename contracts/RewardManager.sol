@@ -1,50 +1,49 @@
 // SPDX-License-Identifier: MIT
-pragma solidity = 0.7.6;
+pragma solidity =0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract RewardManager is Ownable, ReentrancyGuard
-{
+contract RewardManager is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     uint256 public bonusRewardsPool;
-    
+
     address public rewardManagerFactory = owner();
 
     // whitelisted rewardDistributors
-    mapping (address => bool) public rewardDistributor;
-    
+    mapping(address => bool) public rewardDistributor;
+
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
-    mapping (address => bool) public excludedAddresses;
-    
+    mapping(address => bool) public excludedAddresses;
+
     // preMaturePenalty will be sent to burner address
     address public l2Burner;
-    
+
     //Upfront rewards unlock in percentage. This number is later divided by 1000 for calculations.
     uint256 public upfrontUnlock;
-    
+
     //Pre mature penalty in percentage. This number is later divided by 1000 for calculations.
     uint256 public preMaturePenalty;
 
     //Bonus Rewards in percentage. This number is later divided by 1000 for calculations.
     uint256 public bonusPercentage;
-    
+
     /// @notice start of Distribution phase as a timestamp
     uint256 public startDistribution;
 
     /// @notice end of Distribution phase as a timestamp
     uint256 public endDistribution;
-    
+
     //Cryption Network Token (cnt) token address
     IERC20 public cnt;
-    
+
     /// @notice amount vested for a user.
     mapping(address => uint256) public vestedAmount;
-    
+
     /// @notice cumulative total of tokens drawn down (and transferred from the deposit account) per beneficiary
     mapping(address => uint256) public totalDrawn;
 
@@ -56,12 +55,20 @@ contract RewardManager is Ownable, ReentrancyGuard
 
     /// @notice event emitted when a vesting schedule is created
     event Vested(address indexed _beneficiary, uint256 indexed value);
-    
+
     /// @notice event emitted when a successful drawn down of vesting tokens is made
-    event DrawDown(address indexed _beneficiary, uint256 indexed _amount, uint256 indexed bonus);
-    
-     /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
-    event PreMatureDrawn(address indexed _beneficiary, uint256 indexed burntAmount, uint256 indexed userEffectiveWithdrawn);
+    event DrawDown(
+        address indexed _beneficiary,
+        uint256 indexed _amount,
+        uint256 indexed bonus
+    );
+
+    /// @notice event emitted when a successful pre mature drawn down of vesting tokens is made
+    event PreMatureDrawn(
+        address indexed _beneficiary,
+        uint256 indexed burntAmount,
+        uint256 indexed userEffectiveWithdrawn
+    );
 
     modifier checkPercentages(uint256 _percentage) {
         require(_percentage <= 1000, "Invalid Percentages");
@@ -69,7 +76,10 @@ contract RewardManager is Ownable, ReentrancyGuard
     }
 
     modifier checkTime(uint256 _startDistribution, uint256 _endDistribution) {
-        require(_endDistribution > _startDistribution, "end time should be greater than start");
+        require(
+            _endDistribution > _startDistribution,
+            "end time should be greater than start"
+        );
         _;
     }
 
@@ -84,17 +94,15 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @param _burner Burner for collecting preMaturePenalty
      * @dev deployer of contract on constructor is set as owner
      */
-    constructor (
+    constructor(
         IERC20 _cnt,
         uint256 _startDistribution,
         uint256 _endDistribution,
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         uint256 _bonusPercentage,
-        address _burner) 
-        checkTime(_startDistribution, _endDistribution)
-
-    {
+        address _burner
+    ) checkTime(_startDistribution, _endDistribution) {
         cnt = _cnt;
         startDistribution = _startDistribution;
         endDistribution = _endDistribution;
@@ -103,48 +111,60 @@ contract RewardManager is Ownable, ReentrancyGuard
         bonusPercentage = _bonusPercentage;
         l2Burner = _burner;
     }
-        
+
     function _getNow() internal view returns (uint256) {
         return block.timestamp;
     }
 
-    function updatePreMaturePenalty(uint256 _newpreMaturePenalty) external 
-    checkPercentages(_newpreMaturePenalty) 
-    onlyOwner
+    function updatePreMaturePenalty(uint256 _newpreMaturePenalty)
+        external
+        checkPercentages(_newpreMaturePenalty)
+        onlyOwner
     {
         preMaturePenalty = _newpreMaturePenalty;
     }
 
-    function updateBonusPercentage(uint256 _newBonusPercentage) external 
-    onlyOwner
+    function updateBonusPercentage(uint256 _newBonusPercentage)
+        external
+        onlyOwner
     {
         bonusPercentage = _newBonusPercentage;
     }
-    
-    function updateDistributionTime(uint256 _updatedStartTime, uint256 _updatedEndTime) external 
-    checkTime(_updatedStartTime, _updatedEndTime)
-    onlyOwner
-    {
-        require(startDistribution > _getNow(), "Vesting already started can't update now");
+
+    function updateDistributionTime(
+        uint256 _updatedStartTime,
+        uint256 _updatedEndTime
+    ) external checkTime(_updatedStartTime, _updatedEndTime) onlyOwner {
+        require(
+            startDistribution > _getNow(),
+            "Vesting already started can't update now"
+        );
         startDistribution = _updatedStartTime;
         endDistribution = _updatedEndTime;
     }
-    
-    function updateUpfrontUnlock(uint256 _newUpfrontUnlock) external 
-    checkPercentages(_newUpfrontUnlock) 
-    onlyOwner
+
+    function updateUpfrontUnlock(uint256 _newUpfrontUnlock)
+        external
+        checkPercentages(_newUpfrontUnlock)
+        onlyOwner
     {
         upfrontUnlock = _newUpfrontUnlock;
     }
 
-    function updateWhitelistAddress(address _excludeAddress, bool status) external onlyOwner{
+    function updateWhitelistAddress(address _excludeAddress, bool status)
+        external
+        onlyOwner
+    {
         excludedAddresses[_excludeAddress] = status;
     }
 
-    function updateRewardDistributor(address _distributor, bool status) external onlyOwner{
+    function updateRewardDistributor(address _distributor, bool status)
+        external
+        onlyOwner
+    {
         rewardDistributor[_distributor] = status;
     }
-        
+
     function handleRewardsForUser(
         address user,
         uint256 rewardAmount,
@@ -152,28 +172,32 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 pid,
         uint256 rewardDebt
     ) external {
-        require(rewardDistributor[msg.sender],"Not a valid RewardDistributor");
-        if(rewardAmount > 0){
-            if(excludedAddresses[user]){
+        require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
+        if (rewardAmount > 0) {
+            if (excludedAddresses[user]) {
                 cnt.safeTransfer(user, rewardAmount);
-            }
-            else{
-                uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(1000);
+            } else {
+                uint256 upfrontAmount = rewardAmount.mul(upfrontUnlock).div(
+                    1000
+                );
                 cnt.safeTransfer(user, upfrontAmount);
                 _vest(user, rewardAmount.sub(upfrontAmount));
             }
         }
     }
-    
+
     function _vest(address _user, uint256 _amount) internal {
-        require(_getNow() < startDistribution, " Cannot vest in distribution phase");
+        require(
+            _getNow() < startDistribution,
+            " Cannot vest in distribution phase"
+        );
         require(_user != address(0), "Cannot vest for Zero address");
 
         vestedAmount[_user] = vestedAmount[_user].add(_amount);
 
         emit Vested(_user, _amount);
     }
-    
+
     /**
      * @notice Vesting schedule data associated for a user
      * @dev Must be called directly by the beneficiary assigned the tokens in the schedule
@@ -185,76 +209,100 @@ contract RewardManager is Ownable, ReentrancyGuard
      * @return stillDue tokens still due (and currently locked) from vesting schedule
      */
     function vestingInfo(address _user)
-    public view
-    returns (uint256 totalVested, uint256 totalDrawnAmount, uint256 amountBurnt, uint256 claimable, uint256 bonusRewards, uint256 stillDue) {
+        public
+        view
+        returns (
+            uint256 totalVested,
+            uint256 totalDrawnAmount,
+            uint256 amountBurnt,
+            uint256 claimable,
+            uint256 bonusRewards,
+            uint256 stillDue
+        )
+    {
         return (
-        vestedAmount[_user],
-        totalDrawn[_user],
-        burntAmount[_user],
-        _availableDrawDownAmount(_user),
-        bonusReward[_user],
-        _remainingBalance(_user)
+            vestedAmount[_user],
+            totalDrawn[_user],
+            burntAmount[_user],
+            _availableDrawDownAmount(_user),
+            bonusReward[_user],
+            _remainingBalance(_user)
         );
     }
 
-    function _availableDrawDownAmount(address _user) internal view returns (uint256) {
+    function _availableDrawDownAmount(address _user)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 currentTime = _getNow();
-        if (currentTime < startDistribution || totalDrawn[_user] == vestedAmount[_user]) {
+        if (
+            currentTime < startDistribution ||
+            totalDrawn[_user] == vestedAmount[_user]
+        ) {
             return 0;
         } else if (currentTime >= endDistribution) {
             return _remainingBalance(_user);
-        }
-        else {
+        } else {
             uint256 elapsedTime = currentTime.sub(startDistribution);
             uint256 _totalVestingTime = endDistribution.sub(startDistribution);
-            return _remainingBalance(_user).mul(elapsedTime).div(_totalVestingTime);
+            return
+                _remainingBalance(_user).mul(elapsedTime).div(
+                    _totalVestingTime
+                );
         }
     }
 
     function _remainingBalance(address _user) internal view returns (uint256) {
         return vestedAmount[_user].sub(totalDrawn[_user]);
     }
-    
-    
+
     /**
      * @notice Draws down any vested tokens due
-     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
     function drawDown(address _user) external onlyOwner nonReentrant {
         require(_getNow() > startDistribution, "Vesting not yet started");
         return _drawDown(_user);
     }
-    
+
     /**
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
-     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting 
+     * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
-    function preMatureDraw(address _beneficiary) external onlyOwner nonReentrant {
-            uint256 remainingBalance = _remainingBalance(_beneficiary);
-            require(remainingBalance > 0, "Nothing left to draw");
+    function preMatureDraw(address _beneficiary)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        uint256 remainingBalance = _remainingBalance(_beneficiary);
+        require(remainingBalance > 0, "Nothing left to draw");
 
-            _drawDown(_beneficiary);
+        _drawDown(_beneficiary);
 
-            if(remainingBalance > 0){
-                uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(1000);
-                uint256 effectiveAmount = remainingBalance.sub(burnAmount);
+        if (remainingBalance > 0) {
+            uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(
+                1000
+            );
+            uint256 effectiveAmount = remainingBalance.sub(burnAmount);
 
-                totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
-                burntAmount[_beneficiary] = burntAmount[_beneficiary].add(burnAmount);
-                cnt.safeTransfer(_beneficiary, effectiveAmount);
-                cnt.safeTransfer(l2Burner, burnAmount);
-                emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
-            }
+            totalDrawn[_beneficiary] = vestedAmount[_beneficiary];
+            burntAmount[_beneficiary] = burntAmount[_beneficiary].add(
+                burnAmount
+            );
+            cnt.safeTransfer(_beneficiary, effectiveAmount);
+            cnt.safeTransfer(l2Burner, burnAmount);
+            emit PreMatureDrawn(_beneficiary, burnAmount, effectiveAmount);
+        }
     }
 
-    
     function _drawDown(address _beneficiary) internal {
         require(vestedAmount[_beneficiary] > 0, "No vesting found");
 
         uint256 amount = _availableDrawDownAmount(_beneficiary);
-        if(amount == 0) return;
+        if (amount == 0) return;
 
-        if(_getNow() > endDistribution && totalDrawn[_beneficiary] == 0){
+        if (_getNow() > endDistribution && totalDrawn[_beneficiary] == 0) {
             bonusReward[_beneficiary] = amount.mul(bonusPercentage).div(1000);
         }
         // Increase total drawn amount
@@ -289,10 +337,9 @@ contract RewardManager is Ownable, ReentrancyGuard
         uint256 bonus = bonusRewardsPool;
         bonusRewardsPool = 0;
         if (cntBalance < bonus) {
-           cnt.safeTransfer(msg.sender, cntBalance);
-       } else {
-           cnt.safeTransfer(msg.sender, bonus);
-       }
+            cnt.safeTransfer(msg.sender, cntBalance);
+        } else {
+            cnt.safeTransfer(msg.sender, bonus);
+        }
     }
-
 }
