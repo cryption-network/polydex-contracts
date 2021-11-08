@@ -126,8 +126,8 @@ contract RewardManagerFactory is Ownable {
                     user._bonusRewards,
                     user._stillDue
                 ) = manager.vestingInfo(_user);
-                
-                if(user._totalVested) {
+
+                if (user._totalVested > 0) {
                     totalVested += user._totalVested;
                     totalDrawnAmount += user._totalDrawnAmount;
                     amountBurnt += user._amountBurnt;
@@ -148,14 +148,10 @@ contract RewardManagerFactory is Ownable {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
-                (
-                    ,
-                    ,
-                    ,
-                    uint256 userClaimable,
-                    ,
-                ) = manager.vestingInfo(msg.sender);
-                if ( userClaimable > 0) {
+                (, , , uint256 userClaimable, , ) = manager.vestingInfo(
+                    msg.sender
+                );
+                if (userClaimable > 0) {
                     manager.drawDown(msg.sender);
                 }
             }
@@ -171,14 +167,10 @@ contract RewardManagerFactory is Ownable {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
                 RewardManager manager = RewardManager(rewardManagerAddress);
-                (
-                    ,
-                    ,
-                    ,
-                    ,
-                    uint256 userStillDue,
-                ) = manager.vestingInfo(msg.sender);
-                if ( userStillDue > 0) {
+                (, , , , , uint256 userStillDue) = manager.vestingInfo(
+                    msg.sender
+                );
+                if (userStillDue > 0) {
                     manager.preMatureDraw(msg.sender);
                 }
             }
