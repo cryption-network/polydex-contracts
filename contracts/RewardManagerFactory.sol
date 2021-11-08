@@ -6,6 +6,7 @@ import "./RewardManager.sol";
 contract RewardManagerFactory is Ownable {
     using SafeMath for uint256;
     using SafeMath for uint128;
+    using SafeERC20 for IERC20;
 
     /// @notice all the information for this RewardManager in one struct
     struct RewardManagerInfo {
@@ -32,11 +33,23 @@ contract RewardManagerFactory is Ownable {
     // whitelisted rewardDistributors
     mapping(address => bool) public rewardDistributor;
 
+    //Cryption Network Token (cnt) token address
+    IERC20 public cnt;
+
     event RewardManagerLaunched(
         address indexed mangerAddress,
         uint256 indexed startDistributionTime,
         uint256 indexed endDistributionTime
     );
+
+    /**
+     * @notice Construct a new Reward Manager Factory contract
+     * @param _cnt cnt token address
+     * @dev deployer of contract on constructor is set as owner
+     */
+    constructor(IERC20 _cnt) {
+        cnt = _cnt;
+    }
 
     modifier validateRewardManagerByIndex(uint256 _index) {
         require(_index < managers.length, "Reward Manager does not exist");
@@ -168,6 +181,7 @@ contract RewardManagerFactory is Ownable {
         /* No use of if condition here to check if AddressZero since funds are transferred before calling handleRewardsForUser. Require is a must
         So if there is accidentally no strategy linked, it goes into else resulting in loss of user's funds.
         */
+        cnt.safeTransfer(address(manager), rewardAmount);
         manager.handleRewardsForUser(
             user,
             rewardAmount,
