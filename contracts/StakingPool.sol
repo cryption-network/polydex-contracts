@@ -33,7 +33,8 @@ interface ILiquidityManager {
     function handleWithdraw(
         address token,
         uint256 amount,
-        address user
+        address user,
+        uint16 strategyWithdrawalFeeBP
     ) external;
 }
 
@@ -108,6 +109,8 @@ contract StakingPool is
 
     address public liquidityManager;
 
+    uint16 strategyWithdrawalFeeBP; // Deposit fee applied in strategy in basis points
+
     IERC20 public CNT;
 
     event Deposit(address indexed user, uint256 amount);
@@ -144,6 +147,14 @@ contract StakingPool is
     {
         massUpdatePools();
         isRewardManagerEnabled = _isRewardManagerEnabled;
+    }
+
+    function updateStrategyWithdrawalFee(uint16 _strategyWithdrawalFeeBP)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        strategyWithdrawalFeeBP = _strategyWithdrawalFeeBP;
     }
 
     function updateRewardManager(address _rewardManager) external onlyOwner {
@@ -490,6 +501,7 @@ contract StakingPool is
         address _withdrawer
     ) internal {
         UserInfo storage user = userInfo[_user];
+        uint256 strategyWithdrawalFee;
         require(user.amount >= _amount, "INSUFFICIENT");
         payOrLockupPendingReward(_user, _withdrawer);
         if (user.amount == _amount && _amount > 0) {
@@ -497,14 +509,22 @@ contract StakingPool is
         }
 
         if (_amount > 0) {
+            user.amount = user.amount.sub(_amount);
+            totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
             if (isLiquidityManagerEnabled) {
                 ILiquidityManager(liquidityManager).handleWithdraw(
                     address(farmInfo.inputToken),
                     _amount,
-                    _user
+                    _user,
+                    strategyWithdrawalFeeBP
                 );
             }
-            user.amount = user.amount.sub(_amount);
+            if (strategyWithdrawalFeeBP > 0) {
+                strategyWithdrawalFee = _amount
+                    .mul(strategyWithdrawalFeeBP)
+                    .div(10000);
+                _amount = _amount.sub(strategyWithdrawalFee);
+            }
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = _amount
                     .mul(farmInfo.withdrawalFeeBP)
@@ -518,9 +538,9 @@ contract StakingPool is
                 farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
             }
         }
-        totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
         updateRewardDebt(_user);
-        emit Withdraw(_user, _amount);
+        //check logs here for correct amount
+        emit Withdraw(_user, _amount.add(strategyWithdrawalFee));
     }
 
     /**
@@ -528,14 +548,25 @@ contract StakingPool is
      */
     function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
+        uint256 strategyWithdrawalFee;
         if (isLiquidityManagerEnabled) {
             ILiquidityManager(liquidityManager).handleWithdraw(
                 address(farmInfo.inputToken),
                 user.amount,
-                msg.sender
+                msg.sender,
+                strategyWithdrawalFeeBP
             );
         }
-        farmInfo.inputToken.safeTransfer(address(_msgSender()), user.amount);
+        if (strategyWithdrawalFeeBP > 0) {
+            strategyWithdrawalFee = user
+                .amount
+                .mul(strategyWithdrawalFeeBP)
+                .div(10000);
+        }
+        farmInfo.inputToken.safeTransfer(
+            address(_msgSender()),
+            user.amount.sub(strategyWithdrawalFee)
+        );
         emit EmergencyWithdraw(_msgSender(), user.amount);
         if (user.amount > 0) {
             farmInfo.numFarmers--;
