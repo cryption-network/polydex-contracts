@@ -123,7 +123,7 @@ contract RewardManagerFactory is Ownable {
     }
 
     function removeRewardManager(uint256 _index) public onlyOwner {
-        require(_index <= totalRewardManagers, "Invalid Index");
+        require(_index < totalRewardManagers, "Invalid Index");
         delete managers[_index];
     }
 
