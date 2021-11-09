@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import "./RewardManager.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./polydex/interfaces/IRewardManager.sol";
 
 contract RewardManagerFactory is Ownable {
     using SafeMath for uint256;
@@ -53,7 +56,9 @@ contract RewardManagerFactory is Ownable {
 
     modifier validateRewardManagerByIndex(uint256 _index) {
         require(_index < managers.length, "Reward Manager does not exist");
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         require(
             address(manager) != address(0),
             "Reward Manager Address cannot be zero address"
@@ -94,15 +99,15 @@ contract RewardManagerFactory is Ownable {
             "EndDistribution should be more than startDistribution"
         );
 
-        RewardManager newManager = new RewardManager(
-            _cnt,
-            _startDistribution,
-            _endDistribution,
-            _upfrontUnlock,
-            _preMaturePenalty,
-            _bonusPercentage,
-            _burner
-        );
+        // IRewardManager newManager = new RewardManager(
+        //     _cnt,
+        //     _startDistribution,
+        //     _endDistribution,
+        //     _upfrontUnlock,
+        //     _preMaturePenalty,
+        //     _bonusPercentage,
+        //     _burner
+        // );
 
         managers.push(
             RewardManagerInfo({
@@ -143,7 +148,7 @@ contract RewardManagerFactory is Ownable {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
-                RewardManager manager = RewardManager(rewardManagerAddress);
+                IRewardManager manager = IRewardManager(rewardManagerAddress);
                 (
                     user._totalVested,
                     user._totalDrawnAmount,
@@ -174,7 +179,7 @@ contract RewardManagerFactory is Ownable {
     ) external {
         require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
         //get the most active reward manager
-        RewardManager manager = RewardManager(
+        IRewardManager manager = IRewardManager(
             managers[managers.length - 1].managerAddress
         );
         require(address(manager) != address(0), "No Reward Manager Added");
@@ -199,7 +204,7 @@ contract RewardManagerFactory is Ownable {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
-                RewardManager manager = RewardManager(rewardManagerAddress);
+                IRewardManager manager = IRewardManager(rewardManagerAddress);
                 (, , , uint256 userClaimable, , ) = manager.vestingInfo(
                     msg.sender
                 );
@@ -218,7 +223,7 @@ contract RewardManagerFactory is Ownable {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
-                RewardManager manager = RewardManager(rewardManagerAddress);
+                IRewardManager manager = IRewardManager(rewardManagerAddress);
                 (, , , , , uint256 userStillDue) = manager.vestingInfo(
                     msg.sender
                 );
@@ -233,7 +238,9 @@ contract RewardManagerFactory is Ownable {
         uint256 _index,
         uint256 _newpreMaturePenalty
     ) external onlyOwner validateRewardManagerByIndex(_index) {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.updatePreMaturePenalty(_newpreMaturePenalty);
     }
 
@@ -242,7 +249,9 @@ contract RewardManagerFactory is Ownable {
         onlyOwner
         validateRewardManagerByIndex(_index)
     {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.updateBonusPercentage(_newBonusPercentage);
     }
 
@@ -251,7 +260,9 @@ contract RewardManagerFactory is Ownable {
         uint256 _updatedStartTime,
         uint256 _updatedEndTime
     ) external onlyOwner validateRewardManagerByIndex(_index) {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.updateDistributionTime(_updatedStartTime, _updatedEndTime);
         managers[_index].startDistribution = _updatedStartTime;
         managers[_index].endDistribution = _updatedEndTime;
@@ -262,7 +273,9 @@ contract RewardManagerFactory is Ownable {
         onlyOwner
         validateRewardManagerByIndex(_index)
     {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.updateUpfrontUnlock(_newUpfrontUnlock);
     }
 
@@ -271,7 +284,9 @@ contract RewardManagerFactory is Ownable {
         address _excludeAddress,
         bool status
     ) external onlyOwner validateRewardManagerByIndex(_index) {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.updateWhitelistAddress(_excludeAddress, status);
     }
 
@@ -287,7 +302,9 @@ contract RewardManagerFactory is Ownable {
         onlyOwner
         validateRewardManagerByIndex(_index)
     {
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         cnt.safeTransferFrom(msg.sender, address(manager), _bonusRewards);
         manager.addBonusRewards(_bonusRewards);
     }
@@ -301,7 +318,9 @@ contract RewardManagerFactory is Ownable {
             address(_owner) != address(0),
             "Address of owner receiving rewards should not be zero"
         );
-        RewardManager manager = RewardManager(managers[_index].managerAddress);
+        IRewardManager manager = IRewardManager(
+            managers[_index].managerAddress
+        );
         manager.removeBonusRewards(_owner);
     }
 }
