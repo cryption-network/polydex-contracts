@@ -123,6 +123,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     function updateBonusPercentage(uint256 _newBonusPercentage)
         external
+        checkPercentages(_newBonusPercentage)
         onlyOwner
     {
         bonusPercentage = _newBonusPercentage;

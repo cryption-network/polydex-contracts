@@ -28,7 +28,7 @@ contract RewardManagerFactory is Ownable {
 
     uint256 public totalRewardManagers;
 
-    mapping(address => uint256) public mangerIndex;
+    mapping(address => uint256) public managerIndex;
 
     // whitelisted rewardDistributors
     mapping(address => bool) public rewardDistributor;
@@ -37,7 +37,7 @@ contract RewardManagerFactory is Ownable {
     IERC20 public cnt;
 
     event RewardManagerLaunched(
-        address indexed mangerAddress,
+        address indexed managerAddress,
         uint256 indexed startDistributionTime,
         uint256 indexed endDistributionTime
     );
@@ -56,7 +56,7 @@ contract RewardManagerFactory is Ownable {
         RewardManager manager = RewardManager(managers[_index].managerAddress);
         require(
             address(manager) != address(0),
-            "Reward Manager does not exist"
+            "Reward Manager Address cannot be zero address"
         );
         _;
     }
@@ -110,9 +110,9 @@ contract RewardManagerFactory is Ownable {
                 startDistribution: _startDistribution,
                 endDistribution: _endDistribution
             })
-        ); //stacking up every crowdsale info ever made to crowdsales variable
+        );
 
-        mangerIndex[address(newManager)] = totalRewardManagers; //mapping every manager address to its index in the array
+        managerIndex[address(newManager)] = totalRewardManagers; //mapping every manager address to its index in the array
 
         emit RewardManagerLaunched(
             address(newManager),
@@ -175,7 +175,7 @@ contract RewardManagerFactory is Ownable {
         require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
         //get the most active reward manager
         RewardManager manager = RewardManager(
-            managers[totalRewardManagers - 1].managerAddress
+            managers[managers.length - 1].managerAddress
         );
         require(address(manager) != address(0), "No Reward Manager Added");
         /* No use of if condition here to check if AddressZero since funds are transferred before calling handleRewardsForUser. Require is a must
@@ -195,7 +195,7 @@ contract RewardManagerFactory is Ownable {
      * @notice Draws down any vested tokens due in all Reward Manager
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
-    function drawDown() external onlyOwner {
+    function drawDown() external {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
@@ -214,7 +214,7 @@ contract RewardManagerFactory is Ownable {
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
-    function preMatureDraw() external onlyOwner {
+    function preMatureDraw() external {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
