@@ -75,6 +75,7 @@ contract RewardManagerFactory is Ownable {
      * @param _preMaturePenalty Penalty percentage for pre mature withdrawal
      * @param _bonusPercentage Bonus rewards percentage for user who hasn't drawn any rewards untill endDistribution
      * @param _burner Burner for collecting preMaturePenalty
+     * @param _rewardManagerByteCode Bytecode of the reward manager contract to be deployed
      * @dev deployer of contract on constructor is set as owner
      */
     function launchRewardManager(
@@ -84,7 +85,8 @@ contract RewardManagerFactory is Ownable {
         uint256 _upfrontUnlock,
         uint256 _preMaturePenalty,
         uint256 _bonusPercentage,
-        address _burner
+        address _burner,
+        bytes memory _rewardManagerByteCode
     ) public onlyOwner {
         require(address(_cnt) != address(0), "Cant be Zero address");
         require(address(_burner) != address(0), "Burner Cant be Zero address");
@@ -99,15 +101,34 @@ contract RewardManagerFactory is Ownable {
             "EndDistribution should be more than startDistribution"
         );
 
-        // IRewardManager newManager = new RewardManager(
-        //     _cnt,
-        //     _startDistribution,
-        //     _endDistribution,
-        //     _upfrontUnlock,
-        //     _preMaturePenalty,
-        //     _bonusPercentage,
-        //     _burner
-        // );
+        uint256 salt = block.timestamp;
+        bytes memory bytecode = abi.encodePacked(
+            _rewardManagerByteCode,
+            abi.encode(
+                _cnt,
+                _startDistribution,
+                _endDistribution,
+                _upfrontUnlock,
+                _preMaturePenalty,
+                _bonusPercentage,
+                _burner
+            )
+        );
+
+        address newRewardManagerAddress;
+        assembly {
+            newRewardManagerAddress := create2(
+                0,
+                add(bytecode, 0x20),
+                mload(bytecode),
+                salt
+            )
+            if iszero(extcodesize(newRewardManagerAddress)) {
+                revert(0, 0)
+            }
+        }
+
+        IRewardManager newManager = IRewardManager(newRewardManagerAddress);
 
         managers.push(
             RewardManagerInfo({
