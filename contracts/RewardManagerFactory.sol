@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./polydex/interfaces/IRewardManager.sol";
 
-contract RewardManagerFactory is Ownable {
+contract RewardManagerFactory is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeMath for uint128;
     using SafeERC20 for IERC20;

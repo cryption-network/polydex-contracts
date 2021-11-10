@@ -52,5 +52,5 @@ const duration = {
   },
 };
 
-module.exports = { advanceBlockTo  , advanceTime };
+module.exports = { advanceBlockTo  , advanceTime, advanceBlock };
 
