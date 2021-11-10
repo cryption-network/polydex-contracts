@@ -14,9 +14,6 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     address public rewardManagerFactory = owner();
 
-    // whitelisted rewardDistributors
-    mapping(address => bool) public rewardDistributor;
-
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
     mapping(address => bool) public excludedAddresses;
 
@@ -126,6 +123,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     function updateBonusPercentage(uint256 _newBonusPercentage)
         external
+        checkPercentages(_newBonusPercentage)
         onlyOwner
     {
         bonusPercentage = _newBonusPercentage;
@@ -158,21 +156,13 @@ contract RewardManager is Ownable, ReentrancyGuard {
         excludedAddresses[_excludeAddress] = status;
     }
 
-    function updateRewardDistributor(address _distributor, bool status)
-        external
-        onlyOwner
-    {
-        rewardDistributor[_distributor] = status;
-    }
-
     function handleRewardsForUser(
         address user,
         uint256 rewardAmount,
         uint256 timestamp,
         uint256 pid,
         uint256 rewardDebt
-    ) external {
-        require(rewardDistributor[msg.sender], "Not a valid RewardDistributor");
+    ) external onlyOwner {
         if (rewardAmount > 0) {
             if (excludedAddresses[user]) {
                 cnt.safeTransfer(user, rewardAmount);
@@ -279,7 +269,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
         require(remainingBalance > 0, "Nothing left to draw");
 
         _drawDown(_beneficiary);
-
+        remainingBalance = _remainingBalance(_beneficiary);
         if (remainingBalance > 0) {
             uint256 burnAmount = remainingBalance.mul(preMaturePenalty).div(
                 1000
@@ -325,21 +315,20 @@ contract RewardManager is Ownable, ReentrancyGuard {
      */
     function addBonusRewards(uint256 _bonusRewards) external onlyOwner {
         bonusRewardsPool = bonusRewardsPool.add(_bonusRewards);
-        cnt.safeTransferFrom(msg.sender, address(this), _bonusRewards);
     }
 
     /**
      * @notice Function to remove any extra Bonus Rewards sent to this contract
      * @dev Must be called directly by the owner
      */
-    function removeBonusRewards() external onlyOwner {
+    function removeBonusRewards(address _owner) external onlyOwner {
         uint256 cntBalance = cnt.balanceOf(address(this));
         uint256 bonus = bonusRewardsPool;
         bonusRewardsPool = 0;
         if (cntBalance < bonus) {
-            cnt.safeTransfer(msg.sender, cntBalance);
+            cnt.safeTransfer(_owner, cntBalance);
         } else {
-            cnt.safeTransfer(msg.sender, bonus);
+            cnt.safeTransfer(_owner, bonus);
         }
     }
 }
