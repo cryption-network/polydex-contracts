@@ -4,6 +4,7 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./polydex/interfaces/IRewardManager.sol";
 
 contract RewardManagerFactory is Ownable {
@@ -221,7 +222,7 @@ contract RewardManagerFactory is Ownable {
      * @notice Draws down any vested tokens due in all Reward Manager
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
-    function drawDown() external {
+    function drawDown() external nonReentrant {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
@@ -240,7 +241,7 @@ contract RewardManagerFactory is Ownable {
      * @notice Pre maturely Draws down all vested tokens by burning the preMaturePenalty
      * @dev Must be called directly by the beneficiary assigned the tokens in the vesting
      */
-    function preMatureDraw() external {
+    function preMatureDraw() external nonReentrant {
         for (uint256 i = 0; i < totalRewardManagers; i++) {
             address rewardManagerAddress = managers[i].managerAddress;
             if (rewardManagerAddress != address(0)) {
