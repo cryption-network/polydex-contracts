@@ -565,7 +565,6 @@ contract StakingPool is
      */
     function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
-        uint256 strategyWithdrawalFee;
         if (isLiquidityManagerEnabled) {
             ILiquidityManager(liquidityManager).handleWithdraw(
                 address(farmInfo.inputToken),
@@ -574,6 +573,7 @@ contract StakingPool is
                 strategyWithdrawalFeeBP
             );
         }
+        uint256 strategyWithdrawalFee;
         if (strategyWithdrawalFeeBP > 0) {
             strategyWithdrawalFee = user
                 .amount
