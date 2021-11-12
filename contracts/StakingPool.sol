@@ -524,7 +524,6 @@ contract StakingPool is
 
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
             if (isLiquidityManagerEnabled) {
                 ILiquidityManager(liquidityManager).handleWithdraw(
                     address(farmInfo.inputToken),
@@ -555,6 +554,7 @@ contract StakingPool is
                 );
             }
         }
+        totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
         updateRewardDebt(_user);
         //check logs here for correct amount
         emit Withdraw(_user, _amount);
