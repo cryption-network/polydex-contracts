@@ -455,35 +455,35 @@ contract StakingPool is
             farmInfo.numFarmers++;
         }
         if (_amount > 0) {
-            uint256 beforeDepositAmount = user.amount;
             farmInfo.inputToken.safeTransferFrom(
                 address(_msgSender()),
                 address(this),
                 _amount
             );
+            uint256 strategyDepositFee;
             if (strategyDepositFeeBP > 0) {
-                uint256 strategyDepositFee = _amount
-                    .mul(strategyWithdrawalFeeBP)
-                    .div(10000);
-                _amount = _amount.sub(strategyDepositFee);
-            }
-            if (farmInfo.depositFeeBP > 0) {
-                uint256 depositFee = _amount.mul(farmInfo.depositFeeBP).div(
+                strategyDepositFee = _amount.mul(strategyWithdrawalFeeBP).div(
                     10000
                 );
+            }
+            uint256 depositFee;
+            if (farmInfo.depositFeeBP > 0) {
+                depositFee = _amount.mul(farmInfo.depositFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(_amount.sub(depositFee));
+                user.amount = user.amount.add(
+                    _amount.sub(depositFee).sub(strategyDepositFee)
+                );
             } else {
-                user.amount = user.amount.add(_amount);
+                user.amount = user.amount.add(_amount.sub(strategyDepositFee));
             }
             if (isLiquidityManagerEnabled) {
                 IERC20(farmInfo.inputToken).approve(
                     liquidityManager,
-                    user.amount.sub(beforeDepositAmount)
+                    _amount.sub(depositFee)
                 );
                 ILiquidityManager(liquidityManager).handleDeposit(
                     address(farmInfo.inputToken),
-                    user.amount.sub(beforeDepositAmount),
+                    _amount.sub(depositFee),
                     _user
                 );
             }
@@ -516,7 +516,6 @@ contract StakingPool is
         address _withdrawer
     ) internal {
         UserInfo storage user = userInfo[_user];
-        uint256 strategyWithdrawalFee;
         require(user.amount >= _amount, "INSUFFICIENT");
         payOrLockupPendingReward(_user, _withdrawer);
         if (user.amount == _amount && _amount > 0) {
@@ -534,11 +533,11 @@ contract StakingPool is
                     strategyWithdrawalFeeBP
                 );
             }
+            uint256 strategyWithdrawalFee;
             if (strategyWithdrawalFeeBP > 0) {
                 strategyWithdrawalFee = _amount
                     .mul(strategyWithdrawalFeeBP)
                     .div(10000);
-                _amount = _amount.sub(strategyWithdrawalFee);
             }
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = _amount
@@ -547,15 +546,18 @@ contract StakingPool is
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
-                    _amount.sub(withdrawalFee)
+                    _amount.sub(withdrawalFee).sub(strategyWithdrawalFee)
                 );
             } else {
-                farmInfo.inputToken.safeTransfer(address(_withdrawer), _amount);
+                farmInfo.inputToken.safeTransfer(
+                    address(_withdrawer),
+                    _amount.sub(strategyWithdrawalFee)
+                );
             }
         }
         updateRewardDebt(_user);
         //check logs here for correct amount
-        emit Withdraw(_user, _amount.add(strategyWithdrawalFee));
+        emit Withdraw(_user, _amount);
     }
 
     /**
