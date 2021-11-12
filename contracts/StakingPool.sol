@@ -460,21 +460,16 @@ contract StakingPool is
                 address(this),
                 _amount
             );
-            uint256 strategyDepositFee;
-            if (strategyDepositFeeBP > 0) {
-                strategyDepositFee = _amount.mul(strategyWithdrawalFeeBP).div(
-                    10000
-                );
-            }
             uint256 depositFee;
             if (farmInfo.depositFeeBP > 0) {
                 depositFee = _amount.mul(farmInfo.depositFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(
-                    _amount.sub(depositFee).sub(strategyDepositFee)
-                );
-            } else {
-                user.amount = user.amount.add(_amount.sub(strategyDepositFee));
+            }
+            uint256 strategyDepositFee;
+            if (strategyDepositFeeBP > 0) {
+                strategyDepositFee = (_amount.sub(depositFee))
+                    .mul(strategyWithdrawalFeeBP)
+                    .div(10000);
             }
             if (isLiquidityManagerEnabled) {
                 IERC20(farmInfo.inputToken).approve(
@@ -487,6 +482,9 @@ contract StakingPool is
                     _user
                 );
             }
+            user.amount = user.amount.add(
+                _amount.sub(depositFee).sub(strategyDepositFee)
+            );
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
@@ -539,7 +537,7 @@ contract StakingPool is
                     .div(10000);
             }
             if (farmInfo.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee = _amount
+                uint256 withdrawalFee = (_amount.sub(strategyWithdrawalFee))
                     .mul(farmInfo.withdrawalFeeBP)
                     .div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
