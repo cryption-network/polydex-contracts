@@ -109,7 +109,8 @@ contract StakingPool is
 
     address public liquidityManager;
 
-    uint16 strategyWithdrawalFeeBP; // Deposit fee applied in strategy in basis points
+    uint16 strategyWithdrawalFeeBP; // Withdrawal fee applied in strategy in basis points
+    uint16 strategyDepositFeeBP; // Deposit fee applied in strategy in basis points
 
     IERC20 public CNT;
 
@@ -155,6 +156,14 @@ contract StakingPool is
     {
         massUpdatePools();
         strategyWithdrawalFeeBP = _strategyWithdrawalFeeBP;
+    }
+
+    function updateStrategyDepositFee(uint16 _strategyDepositFeeBP)
+        external
+        onlyOwner
+    {
+        massUpdatePools();
+        strategyDepositFeeBP = _strategyDepositFeeBP;
     }
 
     function updateRewardManager(address _rewardManager) external onlyOwner {
@@ -452,6 +461,12 @@ contract StakingPool is
                 address(this),
                 _amount
             );
+            if (strategyDepositFeeBP > 0) {
+                uint256 strategyDepositFee = _amount
+                    .mul(strategyWithdrawalFeeBP)
+                    .div(10000);
+                _amount = _amount.sub(strategyDepositFee);
+            }
             if (farmInfo.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(farmInfo.depositFeeBP).div(
                     10000
