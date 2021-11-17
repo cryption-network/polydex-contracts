@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at arbiscan.io on 2021-09-09
-*/
-
 // Sources flattened with hardhat v2.6.1 https://hardhat.org
 
 // File contracts/polydex/interfaces/IPolydexFactory.sol
