@@ -16,5 +16,17 @@
   "dfyn_Wmatic": "0x4c28f48448720e9000907bc2611f73022fdce1fa",
   "CNT_PER_BLOCK": "750000000000000000",
   "START_BLOCK": "17360000",
-  "BONUS_END_BLOCK": "17360000"
+  "BONUS_END_BLOCK": "17360000",
+  "rewardManagers": {
+    "UPFRONT_UNLOCK": "250",
+    "PREMATURE_PENALTY": "350",
+    "BONUS_PERCENTAGE": "0",
+    "BURNER": "0x937b524174b24f0884f9fef167d6f9cdf553b371",
+    "CNT_TOKEN": "0xD1e6354fb05bF72A8909266203dAb80947dcEccF",
+    "firstRewardManager": {
+      "managerAddress": "0x44390d43f8766CA50679F6678eA9EdB2d3e9EeDB",
+      "startDistribution": "1639144800",
+      "endDistribution": "1654696800"
+    }
+  }
 }
