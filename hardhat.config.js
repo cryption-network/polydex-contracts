@@ -33,6 +33,10 @@ module.exports = {
       accounts: [`0x${PRIVATE_KEY}`],
       gasPrice: 30000000000, //30 gwei
     },
+    harmony_test: {
+      url: `https://api.s0.b.hmny.io`,
+      accounts: [`0x${PRIVATE_KEY}`]
+    },
   },
   solidity: {
     compilers: [
