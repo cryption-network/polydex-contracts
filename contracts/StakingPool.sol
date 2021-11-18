@@ -28,14 +28,13 @@ interface ILiquidityManager {
         address token,
         uint256 amount,
         address user
-    ) external;
+    ) external returns (uint256);
 
     function handleWithdraw(
         address token,
         uint256 amount,
-        address user,
-        uint16 strategyWithdrawalFeeBP
-    ) external;
+        address user
+    ) external returns (uint256);
 }
 
 contract StakingPool is
@@ -109,9 +108,6 @@ contract StakingPool is
 
     address public liquidityManager;
 
-    uint16 strategyWithdrawalFeeBP; // Withdrawal fee applied in strategy in basis points
-    uint16 strategyDepositFeeBP; // Deposit fee applied in strategy in basis points
-
     IERC20 public CNT;
 
     event Deposit(address indexed user, uint256 amount);
@@ -148,22 +144,6 @@ contract StakingPool is
     {
         massUpdatePools();
         isRewardManagerEnabled = _isRewardManagerEnabled;
-    }
-
-    function updateStrategyWithdrawalFee(uint16 _strategyWithdrawalFeeBP)
-        external
-        onlyOwner
-    {
-        massUpdatePools();
-        strategyWithdrawalFeeBP = _strategyWithdrawalFeeBP;
-    }
-
-    function updateStrategyDepositFee(uint16 _strategyDepositFeeBP)
-        external
-        onlyOwner
-    {
-        massUpdatePools();
-        strategyDepositFeeBP = _strategyDepositFeeBP;
     }
 
     function updateRewardManager(address _rewardManager) external onlyOwner {
@@ -465,29 +445,25 @@ contract StakingPool is
                 depositFee = _amount.mul(farmInfo.depositFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
             }
-            uint256 strategyDepositFee;
-            if (strategyDepositFeeBP > 0) {
-                strategyDepositFee = (_amount.sub(depositFee))
-                    .mul(strategyWithdrawalFeeBP)
-                    .div(10000);
-            }
             if (isLiquidityManagerEnabled) {
                 IERC20(farmInfo.inputToken).approve(
                     liquidityManager,
                     _amount.sub(depositFee)
                 );
-                ILiquidityManager(liquidityManager).handleDeposit(
-                    address(farmInfo.inputToken),
-                    _amount.sub(depositFee),
-                    _user
-                );
+                uint256 depositedAmount = ILiquidityManager(liquidityManager)
+                    .handleDeposit(
+                        address(farmInfo.inputToken),
+                        _amount.sub(depositFee),
+                        _user
+                    );
+                user.amount = user.amount.add(depositedAmount);
+            } else {
+                user.amount = user.amount.add(_amount.sub(depositFee));
             }
-            user.amount = user.amount.add(
-                _amount.sub(depositFee).sub(strategyDepositFee)
-            );
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
+        //ask here
         emit Deposit(_user, _amount);
     }
 
@@ -522,33 +498,28 @@ contract StakingPool is
 
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
+            uint256 withdrawnAmount = _amount;
             if (isLiquidityManagerEnabled) {
-                ILiquidityManager(liquidityManager).handleWithdraw(
-                    address(farmInfo.inputToken),
-                    _amount,
-                    _user,
-                    strategyWithdrawalFeeBP
-                );
-            }
-            uint256 strategyWithdrawalFee;
-            if (strategyWithdrawalFeeBP > 0) {
-                strategyWithdrawalFee = _amount
-                    .mul(strategyWithdrawalFeeBP)
-                    .div(10000);
+                withdrawnAmount = ILiquidityManager(liquidityManager)
+                    .handleWithdraw(
+                        address(farmInfo.inputToken),
+                        _amount,
+                        _user
+                    );
             }
             if (farmInfo.withdrawalFeeBP > 0) {
-                uint256 withdrawalFee = (_amount.sub(strategyWithdrawalFee))
+                uint256 withdrawalFee = (withdrawnAmount)
                     .mul(farmInfo.withdrawalFeeBP)
                     .div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, withdrawalFee);
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
-                    _amount.sub(withdrawalFee).sub(strategyWithdrawalFee)
+                    withdrawnAmount.sub(withdrawalFee)
                 );
             } else {
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
-                    _amount.sub(strategyWithdrawalFee)
+                    withdrawnAmount
                 );
             }
         }
@@ -563,24 +534,18 @@ contract StakingPool is
      */
     function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
+        uint256 withdrawnAmount = user.amount;
         if (isLiquidityManagerEnabled) {
-            ILiquidityManager(liquidityManager).handleWithdraw(
-                address(farmInfo.inputToken),
-                user.amount,
-                msg.sender,
-                strategyWithdrawalFeeBP
-            );
-        }
-        uint256 strategyWithdrawalFee;
-        if (strategyWithdrawalFeeBP > 0) {
-            strategyWithdrawalFee = user
-                .amount
-                .mul(strategyWithdrawalFeeBP)
-                .div(10000);
+            withdrawnAmount = ILiquidityManager(liquidityManager)
+                .handleWithdraw(
+                    address(farmInfo.inputToken),
+                    user.amount,
+                    msg.sender
+                );
         }
         farmInfo.inputToken.safeTransfer(
             address(_msgSender()),
-            user.amount.sub(strategyWithdrawalFee)
+            withdrawnAmount
         );
         emit EmergencyWithdraw(_msgSender(), user.amount);
         if (user.amount > 0) {
