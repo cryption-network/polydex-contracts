@@ -26,7 +26,7 @@ module.exports = {
     matic: {
       url: 'https://polygon-rpc.com',
       accounts: [`0x${PRIVATE_KEY}`],
-      gasPrice: 30000000000, //30 gwei
+      gasPrice: 40000000000, //30 gwei
     },
     mumbai: {
       url: `https://matic-mumbai.chainstacklabs.com`,
