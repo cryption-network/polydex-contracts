@@ -460,6 +460,14 @@ contract StakingPool is
             } else {
                 user.amount = user.amount.add(_amount.sub(depositFee));
             }
+        } else {
+            if (isLiquidityManagerEnabled) {
+                ILiquidityManager(liquidityManager).handleDeposit(
+                    address(farmInfo.inputToken),
+                    _amount,
+                    _user
+                );
+            }
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
@@ -520,6 +528,14 @@ contract StakingPool is
                 farmInfo.inputToken.safeTransfer(
                     address(_withdrawer),
                     withdrawnAmount
+                );
+            }
+        } else {
+            if (isLiquidityManagerEnabled) {
+                ILiquidityManager(liquidityManager).handleWithdraw(
+                    address(farmInfo.inputToken),
+                    _amount,
+                    _user
                 );
             }
         }
