@@ -471,7 +471,6 @@ contract StakingPool is
         }
         totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
-        //ask here
         emit Deposit(_user, _amount);
     }
 
@@ -541,7 +540,6 @@ contract StakingPool is
         }
         totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
         updateRewardDebt(_user);
-        //check logs here for correct amount
         emit Withdraw(_user, _amount);
     }
 
