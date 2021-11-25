@@ -696,6 +696,14 @@ contract StakingPool is
         farmInfo.depositFeeBP = _depositFeeBP;
     }
 
+    function changeWithdrawalFee(uint16 _withdrawalFeeBP) external onlyOwner {
+        require(
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid withdrawal fee basis points"
+        );
+        farmInfo.withdrawalFeeBP = _withdrawalFeeBP;
+    }
+
     function changeFarmHarvestInterval(uint256 _harvestInterval)
         external
         onlyOwner
