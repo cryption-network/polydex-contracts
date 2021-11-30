@@ -475,6 +475,24 @@ contract StakingPool is
     }
 
     /**
+     * @notice get withdrawable amount once rescue funds have been called from strategy
+     * @param _amount the amount to process for
+     */
+    function _getWithdrawableAmount(uint256 _amount)
+        internal
+        view
+        returns (uint256 withdrawableAmount)
+    {
+        uint256 totalAssetAmount = farmInfo.inputToken.balanceOf(address(this));
+        uint256 totalCommunityStakedInputTokens = totalInputTokensStaked.sub(
+            totalInputTokensStaked.mul(farmInfo.depositFeeBP).div(10000)
+        );
+        withdrawableAmount = _amount.mul(totalAssetAmount).div(
+            totalCommunityStakedInputTokens
+        );
+    }
+
+    /**
      * @notice withdraw LP token function for _msgSender()
      * @param _amount the total withdrawable amount
      */
@@ -513,6 +531,8 @@ contract StakingPool is
                         _amount,
                         _user
                     );
+            } else {
+                withdrawnAmount = _getWithdrawableAmount(_amount);
             }
             if (farmInfo.withdrawalFeeBP > 0) {
                 uint256 withdrawalFee = (withdrawnAmount)
@@ -556,6 +576,8 @@ contract StakingPool is
                     user.amount,
                     msg.sender
                 );
+        } else {
+            withdrawnAmount = _getWithdrawableAmount(user.amount);
         }
         farmInfo.inputToken.safeTransfer(
             address(_msgSender()),
