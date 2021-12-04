@@ -445,31 +445,28 @@ contract StakingPool is
                 depositFee = _amount.mul(farmInfo.depositFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
             }
+            uint256 depositedAmount;
             if (isLiquidityManagerEnabled) {
                 IERC20(farmInfo.inputToken).approve(
                     liquidityManager,
                     _amount.sub(depositFee)
                 );
-                uint256 depositedAmount = ILiquidityManager(liquidityManager)
+                depositedAmount = ILiquidityManager(liquidityManager)
                     .handleDeposit(
                         address(farmInfo.inputToken),
                         _amount.sub(depositFee),
                         _user
                     );
-                user.amount = user.amount.add(depositedAmount);
             } else {
-                user.amount = user.amount.add(_amount.sub(depositFee));
+                depositedAmount = _amount.sub(depositFee);
             }
+            user.amount = user.amount.add(depositedAmount);
+            totalInputTokensStaked = totalInputTokensStaked.add(
+                depositedAmount
+            );
         } else {
-            if (isLiquidityManagerEnabled) {
-                ILiquidityManager(liquidityManager).handleDeposit(
-                    address(farmInfo.inputToken),
-                    _amount,
-                    _user
-                );
-            }
+            _transferPendingStrategyRewards(_user);
         }
-        totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
         emit Deposit(_user, _amount);
     }
@@ -484,11 +481,8 @@ contract StakingPool is
         returns (uint256 withdrawableAmount)
     {
         uint256 totalAssetAmount = farmInfo.inputToken.balanceOf(address(this));
-        uint256 totalCommunityStakedInputTokens = totalInputTokensStaked.sub(
-            totalInputTokensStaked.mul(farmInfo.depositFeeBP).div(10000)
-        );
         withdrawableAmount = _amount.mul(totalAssetAmount).div(
-            totalCommunityStakedInputTokens
+            totalInputTokensStaked
         );
     }
 
@@ -523,7 +517,7 @@ contract StakingPool is
 
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            uint256 withdrawnAmount = _amount;
+            uint256 withdrawnAmount;
             if (isLiquidityManagerEnabled) {
                 withdrawnAmount = ILiquidityManager(liquidityManager)
                     .handleWithdraw(
@@ -550,13 +544,7 @@ contract StakingPool is
                 );
             }
         } else {
-            if (isLiquidityManagerEnabled) {
-                ILiquidityManager(liquidityManager).handleWithdraw(
-                    address(farmInfo.inputToken),
-                    _amount,
-                    _user
-                );
-            }
+            _transferPendingStrategyRewards(_user);
         }
         totalInputTokensStaked = totalInputTokensStaked.sub(_amount);
         updateRewardDebt(_user);
@@ -568,7 +556,7 @@ contract StakingPool is
      */
     function emergencyWithdraw() external nonReentrant {
         UserInfo storage user = userInfo[_msgSender()];
-        uint256 withdrawnAmount = user.amount;
+        uint256 withdrawnAmount;
         if (isLiquidityManagerEnabled) {
             withdrawnAmount = ILiquidityManager(liquidityManager)
                 .handleWithdraw(
@@ -614,6 +602,16 @@ contract StakingPool is
     {
         UserInfo storage user = userInfo[_owner];
         return user.whiteListedHandlers[_user];
+    }
+
+    function _transferPendingStrategyRewards(address _user) internal {
+        if (isLiquidityManagerEnabled) {
+            ILiquidityManager(liquidityManager).handleDeposit(
+                address(farmInfo.inputToken),
+                0,
+                _user
+            );
+        }
     }
 
     function payOrLockupPendingReward(address _user, address _withdrawer)
