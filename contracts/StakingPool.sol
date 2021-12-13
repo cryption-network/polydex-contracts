@@ -6,22 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./libraries/TransferHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./libraries/TransferHelper.sol";
 import "./libraries/NativeMetaTransaction.sol";
 import "./libraries/ContextMixin.sol";
 import "./polydex/interfaces/IPolydexPair.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-interface IRewardManager {
-    function handleRewardsForUser(
-        address user,
-        uint256 rewardAmount,
-        uint256 timestamp,
-        uint256 pid,
-        uint256 rewardDebt
-    ) external;
-}
+import "./polydex/interfaces/IRewardManager.sol";
 
 contract StakingPool is
     Ownable,
@@ -30,6 +21,7 @@ contract StakingPool is
     ReentrancyGuard
 {
     using SafeMath for uint256;
+    using SafeMath for uint16;
     using SafeERC20 for IERC20;
 
     /// @notice information stuct on each user than stakes LP tokens.
@@ -65,8 +57,11 @@ contract StakingPool is
     // Max harvest interval: 14 days.
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
 
-    // Max deposit fee: 10%. This number is later divided by 10000 for calculations.
+    // Max withdrawal fee: 10%. This number is later divided by 10000 for calculations.
     uint16 public constant MAXIMUM_WITHDRAWAL_FEE_BP = 1000;
+
+    // Max deposit fee: 10%. This number is later divided by 10000 for calculations.
+    uint16 public constant MAXIMUM_DEPOSIT_FEE_BP = 1000;
 
     uint256 public totalInputTokensStaked = 0;
 
@@ -153,7 +148,7 @@ contract StakingPool is
             "add: invalid deposit fee basis points"
         );
         require(
-            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         require(
@@ -308,7 +303,7 @@ contract StakingPool is
             return;
         }
         uint256 lpSupply = totalInputTokensStaked;
-    
+
         if (lpSupply == 0) {
             rewardInfo.lastRewardBlock = block.number;
             return;
@@ -326,7 +321,7 @@ contract StakingPool is
             : farmInfo.endBlock;
     }
 
-    function massUpdatePools() public{
+    function massUpdatePools() public {
         for (uint256 i = 0; i < rewardPool.length; i++) {
             updatePool(i);
         }
@@ -399,18 +394,17 @@ contract StakingPool is
                 address(this),
                 _amount
             );
+            uint256 depositFee;
             if (farmInfo.depositFeeBP > 0) {
-                uint256 depositFee = _amount
-                .mul(farmInfo.depositFeeBP)
-                .div(10000);
+                depositFee = _amount.mul(farmInfo.depositFeeBP).div(10000);
                 farmInfo.inputToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(_amount.sub(depositFee));
-            } else {
-                user.amount = user.amount.add(_amount);
             }
-            
+            uint256 depositedAmount = _amount.sub(depositFee);
+            user.amount = user.amount.add(depositedAmount);
+            totalInputTokensStaked = totalInputTokensStaked.add(
+                depositedAmount
+            );
         }
-        totalInputTokensStaked = totalInputTokensStaked.add(_amount);
         updateRewardDebt(_user);
         emit Deposit(_user, _amount);
     }
@@ -597,15 +591,26 @@ contract StakingPool is
         feeAddress = _feeAddress;
     }
 
+    function changeWithdrawalFee(uint16 _withdrawalFeeBP) external onlyOwner {
+        require(
+            _withdrawalFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            "add: invalid withdrawal fee basis points"
+        );
+        farmInfo.withdrawalFeeBP = _withdrawalFeeBP;
+    }
+
     function changeDepositFee(uint16 _depositFeeBP) external onlyOwner {
         require(
-            _depositFeeBP <= MAXIMUM_WITHDRAWAL_FEE_BP,
+            _depositFeeBP <= MAXIMUM_DEPOSIT_FEE_BP,
             "add: invalid deposit fee basis points"
         );
         farmInfo.depositFeeBP = _depositFeeBP;
     }
 
-    function changeFarmHarvestInterval(uint256 _harvestInterval) external onlyOwner {
+    function changeFarmHarvestInterval(uint256 _harvestInterval)
+        external
+        onlyOwner
+    {
         require(
             _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
             "add: invalid harvest interval"
