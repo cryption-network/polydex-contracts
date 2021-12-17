@@ -12,7 +12,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     uint256 public bonusRewardsPool;
 
-    address public rewardManagerFactory = owner();
+    address public rewardManagerFactory;
 
     // Call from excludedAddresses will be whitelisted & rewards harvested from farm will not be vested
     mapping(address => bool) public excludedAddresses;
@@ -43,6 +43,9 @@ contract RewardManager is Ownable, ReentrancyGuard {
 
     /// @notice cumulative total of tokens drawn down (and transferred from the deposit account) per beneficiary
     mapping(address => uint256) public totalDrawn;
+
+    /// @notice last drawn down time (seconds) per beneficiary
+    mapping(address => uint256) public lastDrawnAt;
 
     /// @notice total tokens burnt per beneficiary
     mapping(address => uint256) public burntAmount;
@@ -107,6 +110,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
         preMaturePenalty = _preMaturePenalty;
         bonusPercentage = _bonusPercentage;
         l2Burner = _burner;
+        rewardManagerFactory = owner();
     }
 
     function _getNow() internal view returns (uint256) {
@@ -179,7 +183,7 @@ contract RewardManager is Ownable, ReentrancyGuard {
     function _vest(address _user, uint256 _amount) internal {
         require(
             _getNow() < startDistribution,
-            " Cannot vest in distribution phase"
+            "Cannot vest in distribution phase"
         );
         require(_user != address(0), "Cannot vest for Zero address");
 
@@ -234,11 +238,23 @@ contract RewardManager is Ownable, ReentrancyGuard {
         } else if (currentTime >= endDistribution) {
             return _remainingBalance(_user);
         } else {
-            uint256 elapsedTime = currentTime.sub(startDistribution);
-            uint256 _totalVestingTime = endDistribution.sub(startDistribution);
+            // Work out when the last invocation was
+            uint256 timeLastDrawnOrStart = lastDrawnAt[_user] == 0
+                ? startDistribution
+                : lastDrawnAt[_user];
+
+            // Find out how much time has past since last invocation
+            uint256 timePassedSinceLastInvocation = currentTime.sub(
+                timeLastDrawnOrStart
+            );
+
+            uint256 _remainingVestingTime = endDistribution.sub(
+                timeLastDrawnOrStart
+            );
+
             return
-                _remainingBalance(_user).mul(elapsedTime).div(
-                    _totalVestingTime
+                _remainingBalance(_user).mul(timePassedSinceLastInvocation).div(
+                    _remainingVestingTime
                 );
         }
     }
@@ -292,9 +308,14 @@ contract RewardManager is Ownable, ReentrancyGuard {
         uint256 amount = _availableDrawDownAmount(_beneficiary);
         if (amount == 0) return;
 
-        if (_getNow() > endDistribution && totalDrawn[_beneficiary] == 0) {
+        uint256 currentTime = _getNow();
+
+        if (currentTime > endDistribution && totalDrawn[_beneficiary] == 0) {
             bonusReward[_beneficiary] = amount.mul(bonusPercentage).div(1000);
         }
+
+        // Update last drawn to now
+        lastDrawnAt[_beneficiary] = currentTime;
         // Increase total drawn amount
         totalDrawn[_beneficiary] = totalDrawn[_beneficiary].add(amount);
 
