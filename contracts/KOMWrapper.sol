@@ -46,12 +46,14 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
     function withdraw(address _recipient, uint256 _amount)
         public
         virtual
+        nonReentrant
         returns (bool)
     {
         //burn WKOM
-        _burn(_recipient, _amount);
+        _burn(_msgSender(), _amount);
         //Scaling down WKOM to KOM
         uint256 komAmount = _amount.mul(1e8).div(1e18);
+
         //Transferring KOM
         SafeERC20.safeTransfer(komToken, _recipient, komAmount);
         return true;

@@ -18,7 +18,8 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
     rewardToken4Instance,
     rewardToken5Instance,
     rewardToken6Instance,
-    stakingPoolInstance;
+    stakingPoolInstance,
+    komTokenInstance;
 
   let initialBlockNumber, endBlockNumber;
 
@@ -105,10 +106,16 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
       ERC20TokensSupply
     );
 
-    rewardToken6Instance = await MockToken.connect(owner).deploy(
-      "RT6",
-      "Reward Token 6",
-      ERC20TokensSupply
+    const KOMToken = await ethers.getContractFactory("ERC20Mock8decimals");
+    komTokenInstance = await KOMToken.connect(owner).deploy(
+      "KOM",
+      "Kommunitas",
+      1e8 * 10 ** 6
+    );
+
+    const KOMWrapper = await ethers.getContractFactory("KOMWrapper");
+    rewardToken6Instance = await KOMWrapper.connect(owner).deploy(
+      komTokenInstance.address
     );
 
     console.log("Lp Token and Reward Tokens Deployed");
@@ -183,11 +190,90 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
       getRewardReserves(5)
     );
 
+    console.log(
+      "Before Deposit KOM Balance for Signer",
+      Number(await komTokenInstance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "Before Deposit WKOM Balance for Signer",
+      Number(await rewardToken6Instance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "Before Deposit KOM Balance in WKOM Contract",
+      Number(await komTokenInstance.balanceOf(rewardToken6Instance.address))
+    );
+
+    console.log(
+      "Before Deposit KOM Balance in Staking Contract",
+      Number(await komTokenInstance.balanceOf(stakingPoolInstance.address))
+    );
+
+    console.log(
+      "Before Deposit WKOM Balance in Staking Contract",
+      Number(await rewardToken6Instance.balanceOf(stakingPoolInstance.address))
+    );
+
+    await komTokenInstance.approve(rewardToken6Instance.address, 1e8 * 300 * 6);
+
+    await rewardToken6Instance.deposit(1e8 * 300 * 6);
+
+    console.log(
+      "After Deposit KOM Balance for Signer",
+      Number(await komTokenInstance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "After Deposit WKOM Balance for Signer",
+      Number(await rewardToken6Instance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "After Deposit KOM Balance in WKOM Contract",
+      Number(await komTokenInstance.balanceOf(rewardToken6Instance.address))
+    );
+
+    console.log(
+      "After Deposit KOM Balance in Staking Contract",
+      Number(await komTokenInstance.balanceOf(stakingPoolInstance.address))
+    );
+
+    console.log(
+      "After Deposit WKOM Balance in Staking Contract",
+      Number(await rewardToken6Instance.balanceOf(stakingPoolInstance.address))
+    );
+
     await addRewardToken(
       rewardToken6Instance,
       blockRewardForToken6,
       initialBlockNumber,
       getRewardReserves(6)
+    );
+
+    console.log(
+      "After reward token added KOM Balance for Signer",
+      Number(await komTokenInstance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "After reward token added WKOM Balance for Signer",
+      Number(await rewardToken6Instance.balanceOf(owner.address))
+    );
+
+    console.log(
+      "After reward token added KOM Balance in WKOM Contract",
+      Number(await komTokenInstance.balanceOf(rewardToken6Instance.address))
+    );
+
+    console.log(
+      "After reward token added KOM Balance in Staking Contract",
+      Number(await komTokenInstance.balanceOf(stakingPoolInstance.address))
+    );
+
+    console.log(
+      "After reward token added WKOM Balance in Staking Contract",
+      Number(await rewardToken6Instance.balanceOf(stakingPoolInstance.address))
     );
 
     await lpTokenInstance
@@ -252,7 +338,7 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
 
   it("should increase the pending rewards for the user", async function() {
     const depositorBalanceReward1BeforeHarvest = String(
-      await rewardToken1Instance.balanceOf(depositor.address)
+      await komTokenInstance.balanceOf(depositor.address)
     );
     console.log(
       "Depositor Balance RewardToken1 before harvest",
@@ -279,7 +365,7 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
     const tx = await stakingPoolInstance.connect(depositor).deposit(0);
     console.log("\tGas Used:", String((await tx.wait()).gasUsed));
     const depositorBalanceReward1AfterHarvest = String(
-      await rewardToken1Instance.balanceOf(depositor.address)
+      await komTokenInstance.balanceOf(depositor.address)
     );
     console.log(
       "Depositor Balance RewardToken1 after harvest",
