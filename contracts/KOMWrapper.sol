@@ -11,9 +11,18 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
     IERC20 public immutable komToken;
+    address public stakingPool;
 
-    constructor(IERC20 _komToken) ERC20("Wrapped KOM", "WKOM") {
+    constructor(IERC20 _komToken, address _stakingPool)
+        ERC20("Wrapped KOM", "WKOM")
+    {
         komToken = _komToken;
+        stakingPool = _stakingPool;
+    }
+
+    function updateStakingPoolAddress(address _stakingPool) external onlyOwner {
+        require(_stakingPool != address(0), "No zero address");
+        stakingPool = _stakingPool;
     }
 
     /**
@@ -65,6 +74,22 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
         returns (bool)
     {
         withdraw(_recipient, _amount);
+        return true;
+    }
+
+    function transferToFarm(uint256 _amount)
+        public
+        onlyOwner
+        nonReentrant
+        returns (bool)
+    {
+        //Receiving WKOM and transferring to staking pool;
+        SafeERC20.safeTransferFrom(
+            IERC20(address(this)),
+            _msgSender(),
+            stakingPool,
+            _amount
+        );
         return true;
     }
 }

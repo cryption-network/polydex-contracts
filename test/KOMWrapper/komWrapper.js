@@ -26,7 +26,8 @@ describe("KOM Wrapper contract", function() {
     const KOMWrapper = await ethers.getContractFactory("KOMWrapper");
 
     this.komWrapperInstance = await KOMWrapper.deploy(
-      this.komTokenInstance.address
+      this.komTokenInstance.address,
+      this.signer.address
     );
 
     await this.komWrapperInstance.deployed();
@@ -133,6 +134,52 @@ describe("KOM Wrapper contract", function() {
     console.log("Testing Transfer");
     await this.komWrapperInstance.transfer(
       this.signer.address,
+      await this.komWrapperInstance.balanceOf(this.signer.address)
+    );
+    console.log(
+      "After Transfer KOM Balance for Signer",
+      Number(await this.komTokenInstance.balanceOf(this.signer.address))
+    );
+
+    console.log(
+      "After Transfer WKOM Balance for Signer",
+      Number(await this.komWrapperInstance.balanceOf(this.signer.address))
+    );
+
+    console.log(
+      "After Transfer KOM Balance in WKOM Contract",
+      Number(
+        await this.komTokenInstance.balanceOf(this.komWrapperInstance.address)
+      )
+    );
+  });
+
+  it("should transfer WKOM to Staking Pool Address", async function() {
+    await this.komWrapperInstance.deposit(
+      await this.komTokenInstance.balanceOf(this.signer.address)
+    );
+    console.log(
+      "Before Transfer KOM Balance for Signer",
+      Number(await this.komTokenInstance.balanceOf(this.signer.address))
+    );
+
+    console.log(
+      "Before Transfer WKOM Balance for Signer",
+      Number(await this.komWrapperInstance.balanceOf(this.signer.address))
+    );
+
+    console.log(
+      "Before Transfer KOM Balance in WKOM Contract",
+      Number(
+        await this.komTokenInstance.balanceOf(this.komWrapperInstance.address)
+      )
+    );
+    console.log("Testing Transfer to Farm");
+    await this.komWrapperInstance.approve(
+      this.komWrapperInstance.address,
+      MaxUint256
+    );
+    await this.komWrapperInstance.transferToFarm(
       await this.komWrapperInstance.balanceOf(this.signer.address)
     );
     console.log(

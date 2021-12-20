@@ -113,11 +113,6 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
       1e8 * 10 ** 6
     );
 
-    const KOMWrapper = await ethers.getContractFactory("KOMWrapper");
-    rewardToken6Instance = await KOMWrapper.connect(owner).deploy(
-      komTokenInstance.address
-    );
-
     console.log("Lp Token and Reward Tokens Deployed");
 
     const StakingPool = await ethers.getContractFactory("StakingPool");
@@ -127,6 +122,12 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
     );
 
     console.log(`Staking Pool Deployed at ${stakingPoolInstance.address}`);
+
+    const KOMWrapper = await ethers.getContractFactory("KOMWrapper");
+    rewardToken6Instance = await KOMWrapper.connect(owner).deploy(
+      komTokenInstance.address,
+      stakingPoolInstance.address
+    );
 
     initialBlockNumber =
       (await hre.ethers.provider.getBlock("latest")).number + 15;
@@ -248,8 +249,15 @@ describe("Multi Rewards StakingPool (6 Reward Tokens)", function async() {
       rewardToken6Instance,
       blockRewardForToken6,
       initialBlockNumber,
+      0
+    );
+
+    await rewardToken6Instance.approve(
+      rewardToken6Instance.address,
       getRewardReserves(6)
     );
+
+    await rewardToken6Instance.transferToFarm(getRewardReserves(6));
 
     console.log(
       "After reward token added KOM Balance for Signer",
