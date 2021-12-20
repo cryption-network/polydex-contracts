@@ -14,7 +14,7 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
     address public stakingPool;
 
     constructor(IERC20 _komToken, address _stakingPool)
-        ERC20("Wrapped KOM", "WKOM")
+        ERC20("Wrapped KOM", "wKOM")
     {
         komToken = _komToken;
         stakingPool = _stakingPool;
@@ -42,9 +42,9 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
             address(this),
             _amount
         );
-        //Scaling KOM to WKOM
+        //Scaling KOM to wKOM
         uint256 wrappedAmount = _amount.mul(1e18).div(1e8);
-        //Minting WKOM
+        //Minting wKOM
         _mint(_msgSender(), wrappedAmount);
         return true;
     }
@@ -58,9 +58,9 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
         nonReentrant
         returns (bool)
     {
-        //burn WKOM
+        //burn wKOM
         _burn(_msgSender(), _amount);
-        //Scaling down WKOM to KOM
+        //Scaling down wKOM to KOM
         uint256 komAmount = _amount.mul(1e8).div(1e18);
 
         //Transferring KOM
@@ -83,7 +83,7 @@ contract KOMWrapper is ERC20, Ownable, ReentrancyGuard {
         nonReentrant
         returns (bool)
     {
-        //Receiving WKOM and transferring to staking pool;
+        //Receiving wKOM and transferring to staking pool;
         SafeERC20.safeTransferFrom(
             IERC20(address(this)),
             _msgSender(),
