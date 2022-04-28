@@ -3,7 +3,6 @@
 pragma solidity =0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IPolydexPair.sol";
@@ -15,8 +14,6 @@ import "../libraries/TransferHelper.sol";
 
 // QuickSwapMigrator helps you migrate your Polydex LP tokens to Quickswap LP tokens
 contract QuickSwapMigrator is Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
-
     IPolydexFactory public immutable polydexFactory;
     IPolydexFactory public immutable quickswapFactory;
 
@@ -70,6 +67,7 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         IRewardManager _rewardManger,
         address _cnt
     ) {
+        require(_cnt != address(0), "QuickSwapMigrator: No zero address");
         polydexRouter = _polydexRouter;
         quickswapRouter = _quickswapRouter;
         polydexFactory = IPolydexFactory(_polydexRouter.factory());
@@ -80,12 +78,6 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         rewardManager = _rewardManger;
         cnt = _cnt;
     }
-
-    receive() external payable {}
-
-    //will the user suffer high slippage ?
-    //add function to tranfer eth
-    //check if both farms are same ? Deployment of new farm ?
 
     // need to call addUserToWhiteList before this
     //Prerequisite: in RewardManager excludedAddresses[LiquidityMigrator_Contract] & rewardDistributor[LiquidityMigrator_Contract] should be set to true
@@ -106,9 +98,12 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
             _lpAmount > 0,
             "QuickSwapMigrator: LP Amount should be greater than zero"
         );
-        require(_oldPid == 0, "QuickSwapMigrator: Invalid old pid");
         require(
-            _newPid < quickswapFarm.poolLength() && _newPid >= 0,
+            _oldPid == 0 && _newPid >= 0,
+            "QuickSwapMigrator: Invalid pids"
+        );
+        require(
+            _newPid < quickswapFarm.poolLength(),
             "QuickSwapMigrator: Invalid new pid"
         );
 
@@ -126,6 +121,10 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
 
         //Withdraw old LP tokens
         polydexFarm.withdrawFor(_oldPid, _lpAmount, msg.sender);
+        require(
+            oldLPAddress.balanceOf(address(this)) >= _lpAmount,
+            "QuickSwapMigrator: Insufficient old LP Balance"
+        );
 
         //Migrator vests users's CNT to reward manager for the user
         uint256 cntBalance = IERC20(cnt).balanceOf(address(this));
@@ -144,20 +143,15 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
             );
         }
 
+        liquidityVars.tokenA = oldLPAddress.token0();
+        liquidityVars.tokenB = oldLPAddress.token1();
+
         //Approve old LP to the router
-        require(
-            oldLPAddress.balanceOf(address(this)) >= _lpAmount,
-            "QuickSwapMigrator: Insufficient old LP Balance"
-        );
         TransferHelper.safeApprove(
             address(oldLPAddress),
             address(polydexRouter),
             _lpAmount
         );
-
-        //validate LP and pair tokens
-        liquidityVars.tokenA = oldLPAddress.token0();
-        liquidityVars.tokenB = oldLPAddress.token1();
 
         //Remove liquidity
         (
@@ -228,10 +222,10 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
     }
 
     // Rescue any tokens that have not been able to processed by the contract
-    function rescueFunds(address token) external onlyOwner {
-        uint256 balance = IERC20(token).balanceOf(address(this));
+    function rescueFunds(address _token) external onlyOwner nonReentrant {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
         require(balance > 0, "QuickSwapMigrator: Insufficient token balance");
-        TransferHelper.safeTransfer(address(token), owner(), balance);
+        TransferHelper.safeTransfer(address(_token), msg.sender, balance);
     }
 
     function _transFormLiquidity() internal {
