@@ -136,32 +136,8 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
             );
         }
 
-        liquidityVars.tokenA = oldLPAddress.token0();
-        liquidityVars.tokenB = oldLPAddress.token1();
-
-        //Approve old LP to the router
-        TransferHelper.safeApprove(
-            address(oldLPAddress),
-            address(polydexRouter),
-            _lpAmount
-        );
-
-        //Remove liquidity
-        (
-            liquidityVars.amountAReceived,
-            liquidityVars.amountBReceived
-        ) = polydexRouter.removeLiquidity(
-            liquidityVars.tokenA,
-            liquidityVars.tokenB,
-            _lpAmount,
-            1,
-            1,
-            address(this),
-            DEADLINE
-        );
-
         //transform liquidity from polydex to quickswap
-        _transFormLiquidity();
+        _transFormLiquidity(_oldLPAddress, _lpAmount);
 
         //Check pending balances of tokens in the old LP
         liquidityVars.amountAleft = IERC20(liquidityVars.tokenA).balanceOf(
@@ -219,7 +195,33 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         TransferHelper.safeTransfer(address(_token), msg.sender, balance);
     }
 
-    function _transFormLiquidity() internal {
+    function _transFormLiquidity(IPolydexPair _oldLPAddress, uint256 _lpAmount)
+        internal
+    {
+        liquidityVars.tokenA = _oldLPAddress.token0();
+        liquidityVars.tokenB = _oldLPAddress.token1();
+
+        //Approve old LP to the router
+        TransferHelper.safeApprove(
+            address(_oldLPAddress),
+            address(polydexRouter),
+            _lpAmount
+        );
+
+        //Remove liquidity
+        (
+            liquidityVars.amountAReceived,
+            liquidityVars.amountBReceived
+        ) = polydexRouter.removeLiquidity(
+            liquidityVars.tokenA,
+            liquidityVars.tokenB,
+            _lpAmount,
+            1,
+            1,
+            address(this),
+            DEADLINE
+        );
+
         TransferHelper.safeApprove(
             address(liquidityVars.tokenA),
             address(quickswapRouter),
