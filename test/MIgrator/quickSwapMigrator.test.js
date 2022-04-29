@@ -20,6 +20,7 @@ const deployedAddresses = {
   polydexFactory: "0x5BdD1CD910e3307582F213b33699e676E61deaD9",
   quickswapFactory: "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32",
   wrongLPAddress: "0x67ec655015d1a5F6b61A4560F769C8bb66a8a73F",
+  quickswapFarm: "0xf91C946EdEE7A0C44d9f48b7b20BeD2E6c1C6d9b",
 };
 
 const balanceToSetInHex = "0x3635C9ADC5DEA00000";
@@ -36,6 +37,9 @@ describe.only("Quickswap Migrator", function() {
     const Farm = await ethers.getContractFactory("Farm");
     this.farm = Farm.attach(deployedAddresses.polydexFarm);
 
+    const StakingPool = await ethers.getContractFactory("StakingPool");
+    this.stakingPool = StakingPool.attach(deployedAddresses.quickswapFarm);
+
     const RewardManagerFactory = await ethers.getContractFactory(
       "RewardManagerFactory"
     );
@@ -50,7 +54,7 @@ describe.only("Quickswap Migrator", function() {
       deployedAddresses.polydexRouter,
       deployedAddresses.quickswapRouter,
       deployedAddresses.polydexFarm,
-      deployedAddresses.polydexFarm,
+      deployedAddresses.quickswapFarm,
       deployedAddresses.rewardManager,
       this.cnt.address
     );
@@ -67,32 +71,18 @@ describe.only("Quickswap Migrator", function() {
       balanceToSetInHex,
     ]);
 
-    let farmOwnerUser = deployedAddresses.farmOwner;
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [farmOwnerUser],
-    });
-    const farmOwner = await ethers.getSigner(farmOwnerUser);
-    await hre.network.provider.send("hardhat_setBalance", [
-      farmOwnerUser,
-      balanceToSetInHex,
-    ]);
-
     await this.rewardManager
       .connect(rewardManagerOwner)
       .updateRewardDistributor(this.quickswapMigrator.address, true);
     await this.rewardManager
       .connect(rewardManagerOwner)
       .updateWhitelistAddress(6, this.quickswapMigrator.address, true);
-
-    await this.farm
-      .connect(farmOwner)
-      .add(100, deployedAddresses.quickswapLP, 0, 86400, true);
   });
 
   it("should set correct state variables", async function() {
     const wmatic = await this.quickswapMigrator.wmatic();
     const polydexFarm = await this.quickswapMigrator.polydexFarm();
+    const quickswapFarm = await this.quickswapMigrator.quickswapFarm();
     const cnt = await this.quickswapMigrator.cnt();
     const rewardManager = await this.quickswapMigrator.rewardManager();
     const owner = await this.quickswapMigrator.owner();
@@ -103,6 +93,7 @@ describe.only("Quickswap Migrator", function() {
 
     expect(wmatic).to.equal(this.wmatic.address);
     expect(polydexFarm).to.equal(this.farm.address);
+    expect(quickswapFarm).to.equal(this.stakingPool.address);
     expect(cnt).to.equal(this.cnt.address);
     expect(rewardManager).to.equal(this.rewardManager.address);
     expect(owner).to.equal(this.signer.address);
@@ -125,7 +116,6 @@ describe.only("Quickswap Migrator", function() {
       balanceToSetInHex,
     ]);
     const oldPid = 0;
-    const newPid = 17;
     const pendingCNT = await this.farm.pendingCNT(oldPid, user);
     console.log(
       `Pending CNT for harvest for the user is ${pendingCNT.toString()}`
@@ -135,7 +125,7 @@ describe.only("Quickswap Migrator", function() {
     ).amount;
     console.log(`LP tokens in old CNT-WMATIC farm - ${oldLPTokenAmountInFarm}`);
     let newLPTokenAmountInFarm = (
-      await this.farm.userInfo(newPid, signer.address)
+      await this.stakingPool.userInfo(signer.address)
     ).amount;
     console.log(
       `LP tokens in new CNT-WMATIC farm - ${Number(newLPTokenAmountInFarm)}`
@@ -160,12 +150,12 @@ describe.only("Quickswap Migrator", function() {
     await expect(
       this.quickswapMigrator
         .connect(signer)
-        .migrate(oldPid, 0, AddressZero, newPid, deployedAddresses.quickswapLP)
+        .migrate(oldPid, 0, AddressZero, deployedAddresses.quickswapLP)
     ).to.be.revertedWith("QuickSwapMigrator: No zero address");
     await expect(
       this.quickswapMigrator
         .connect(signer)
-        .migrate(oldPid, 0, deployedAddresses.polydexLP, newPid, AddressZero)
+        .migrate(oldPid, 0, deployedAddresses.polydexLP, AddressZero)
     ).to.be.revertedWith("QuickSwapMigrator: No zero address");
     await expect(
       this.quickswapMigrator
@@ -174,20 +164,6 @@ describe.only("Quickswap Migrator", function() {
           oldPid,
           0,
           deployedAddresses.polydexLP,
-          newPid,
-          deployedAddresses.quickswapLP
-        )
-    ).to.be.revertedWith(
-      "QuickSwapMigrator: LP Amount should be greater than zero"
-    );
-    await expect(
-      this.quickswapMigrator
-        .connect(signer)
-        .migrate(
-          oldPid,
-          0,
-          deployedAddresses.polydexLP,
-          newPid,
           deployedAddresses.quickswapLP
         )
     ).to.be.revertedWith(
@@ -200,10 +176,9 @@ describe.only("Quickswap Migrator", function() {
           1,
           oldLPTokenAmountInFarm,
           deployedAddresses.polydexLP,
-          newPid,
           deployedAddresses.quickswapLP
         )
-    ).to.be.revertedWith("QuickSwapMigrator: Invalid pids");
+    ).to.be.revertedWith("QuickSwapMigrator: Invalid pid");
     await expect(
       this.quickswapMigrator
         .connect(signer)
@@ -211,7 +186,6 @@ describe.only("Quickswap Migrator", function() {
           oldPid,
           oldLPTokenAmountInFarm,
           deployedAddresses.wrongLPAddress,
-          newPid,
           deployedAddresses.quickswapLP
         )
     ).to.be.revertedWith("QuickSwapMigrator: Invalid LP token addresses");
@@ -222,7 +196,6 @@ describe.only("Quickswap Migrator", function() {
         oldPid,
         oldLPTokenAmountInFarm,
         deployedAddresses.polydexLP,
-        newPid,
         deployedAddresses.quickswapLP
       );
 
@@ -233,7 +206,7 @@ describe.only("Quickswap Migrator", function() {
         oldLPTokenAmountInFarm
       )}`
     );
-    newLPTokenAmountInFarm = (await this.farm.userInfo(newPid, signer.address))
+    newLPTokenAmountInFarm = (await this.stakingPool.userInfo(signer.address))
       .amount;
     console.log(
       `LP tokens in new CNT-WMATIC farm after migration - ${Number(
@@ -268,7 +241,6 @@ describe.only("Quickswap Migrator", function() {
       balanceToSetInHex,
     ]);
     const oldPid = 0;
-    const newPid = 17;
     const pendingCNT = await this.farm.pendingCNT(oldPid, user);
     console.log(
       `Pending CNT for harvest for the user is ${pendingCNT.toString()}`
@@ -278,7 +250,7 @@ describe.only("Quickswap Migrator", function() {
     ).amount;
     console.log(`LP tokens in old CNT-WMATIC farm - ${oldLPTokenAmountInFarm}`);
     let newLPTokenAmountInFarm = (
-      await this.farm.userInfo(newPid, signer.address)
+      await this.stakingPool.userInfo(signer.address)
     ).amount;
     console.log(
       `LP tokens in new CNT-WMATIC farm - ${Number(newLPTokenAmountInFarm)}`
@@ -303,12 +275,12 @@ describe.only("Quickswap Migrator", function() {
     await expect(
       this.quickswapMigrator
         .connect(signer)
-        .migrate(oldPid, 0, AddressZero, newPid, deployedAddresses.quickswapLP)
+        .migrate(oldPid, 0, AddressZero, deployedAddresses.quickswapLP)
     ).to.be.revertedWith("QuickSwapMigrator: No zero address");
     await expect(
       this.quickswapMigrator
         .connect(signer)
-        .migrate(oldPid, 0, deployedAddresses.polydexLP, newPid, AddressZero)
+        .migrate(oldPid, 0, deployedAddresses.polydexLP, AddressZero)
     ).to.be.revertedWith("QuickSwapMigrator: No zero address");
     await expect(
       this.quickswapMigrator
@@ -317,20 +289,6 @@ describe.only("Quickswap Migrator", function() {
           oldPid,
           0,
           deployedAddresses.polydexLP,
-          newPid,
-          deployedAddresses.quickswapLP
-        )
-    ).to.be.revertedWith(
-      "QuickSwapMigrator: LP Amount should be greater than zero"
-    );
-    await expect(
-      this.quickswapMigrator
-        .connect(signer)
-        .migrate(
-          oldPid,
-          0,
-          deployedAddresses.polydexLP,
-          newPid,
           deployedAddresses.quickswapLP
         )
     ).to.be.revertedWith(
@@ -343,10 +301,9 @@ describe.only("Quickswap Migrator", function() {
           1,
           oldLPTokenAmountInFarm,
           deployedAddresses.polydexLP,
-          newPid,
           deployedAddresses.quickswapLP
         )
-    ).to.be.revertedWith("QuickSwapMigrator: Invalid pids");
+    ).to.be.revertedWith("QuickSwapMigrator: Invalid pid");
     await expect(
       this.quickswapMigrator
         .connect(signer)
@@ -354,7 +311,6 @@ describe.only("Quickswap Migrator", function() {
           oldPid,
           oldLPTokenAmountInFarm,
           deployedAddresses.wrongLPAddress,
-          newPid,
           deployedAddresses.quickswapLP
         )
     ).to.be.revertedWith("QuickSwapMigrator: Invalid LP token addresses");
@@ -365,7 +321,6 @@ describe.only("Quickswap Migrator", function() {
         oldPid,
         oldLPTokenAmountInFarm,
         deployedAddresses.polydexLP,
-        newPid,
         deployedAddresses.quickswapLP
       );
 
@@ -376,7 +331,7 @@ describe.only("Quickswap Migrator", function() {
         oldLPTokenAmountInFarm
       )}`
     );
-    newLPTokenAmountInFarm = (await this.farm.userInfo(newPid, signer.address))
+    newLPTokenAmountInFarm = (await this.stakingPool.userInfo(signer.address))
       .amount;
     console.log(
       `LP tokens in new CNT-WMATIC farm after migration - ${Number(
