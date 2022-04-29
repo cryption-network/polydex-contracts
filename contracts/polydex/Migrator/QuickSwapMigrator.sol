@@ -9,6 +9,7 @@ import "../interfaces/IPolydexPair.sol";
 import "../interfaces/IPolydexRouter.sol";
 import "../interfaces/IPolydexFactory.sol";
 import "../interfaces/IFarm.sol";
+import "../interfaces/IDappFactoryFarm.sol";
 import "../interfaces/IRewardManager.sol";
 import "../libraries/TransferHelper.sol";
 
@@ -21,7 +22,7 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
     IPolydexRouter public immutable quickswapRouter;
 
     IFarm public polydexFarm;
-    IFarm public quickswapFarm;
+    IDappFactoryFarm public quickswapFarm;
 
     IRewardManager public rewardManager;
 
@@ -63,7 +64,7 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         IPolydexRouter _polydexRouter,
         IPolydexRouter _quickswapRouter,
         IFarm _polydexFarm,
-        IFarm _quickswapFarm,
+        IDappFactoryFarm _quickswapFarm,
         IRewardManager _rewardManger,
         address _cnt
     ) {
@@ -85,7 +86,6 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         uint256 _oldPid,
         uint256 _lpAmount,
         IPolydexPair _oldLPAddress,
-        uint256 _newPid,
         IPolydexPair _newLPAddress
     )
         external
@@ -98,14 +98,7 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
             _lpAmount > 0,
             "QuickSwapMigrator: LP Amount should be greater than zero"
         );
-        require(
-            _oldPid == 0 && _newPid >= 0,
-            "QuickSwapMigrator: Invalid pids"
-        );
-        require(
-            _newPid < quickswapFarm.poolLength(),
-            "QuickSwapMigrator: Invalid new pid"
-        );
+        require(_oldPid == 0, "QuickSwapMigrator: Invalid pid");
 
         //validate LP addresses
         IPolydexPair oldLPAddress = IPolydexPair(
@@ -195,7 +188,6 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
         if (newLPAddress.balanceOf(address(this)) >= liquidityVars.lpReceived)
             _depositLP(
                 address(newLPAddress),
-                _newPid,
                 liquidityVars.lpReceived,
                 msg.sender
             );
@@ -209,7 +201,6 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
 
     function _depositLP(
         address _pairAddress,
-        uint256 _pid,
         uint256 _lpAmount,
         address _user
     ) internal {
@@ -218,7 +209,7 @@ contract QuickSwapMigrator is Ownable, ReentrancyGuard {
             address(quickswapFarm),
             _lpAmount
         );
-        quickswapFarm.depositFor(_pid, _lpAmount, _user);
+        quickswapFarm.depositFor(_lpAmount, _user);
     }
 
     // Rescue any tokens that have not been able to processed by the contract
