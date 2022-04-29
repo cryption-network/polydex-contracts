@@ -31,6 +31,8 @@
     "deployRewardManagerFactory:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployRewardManagerFactory.js",
     "verifyRewardManager:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/verifyRewardManager.js",
     "verifyRewardManager:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/verifyRewardManager.js",
+    "deployKOMWrapper:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployKOMWrapper.js",
+    "deployKOMWrapper:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployKOMWrapper.js",
     "deployQuickSwapMigrator:test": "HARDHAT_NETWORK=mumbai npx hardhat run scripts/deploy/deployQuickSwapMigrator.js",
     "deployQuickSwapMigrator:main": "HARDHAT_NETWORK=matic npx hardhat run scripts/deploy/deployQuickSwapMigrator.js"
   },
